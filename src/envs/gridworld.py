@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 import numpy as np
 import gymnasium as gym
 import pygame
@@ -54,7 +54,7 @@ class GridWorldEnv(gym.Env):
         """
         return {}
     
-    def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
+    def reset(self, seed: Optional[int] = None, options: Optional[dict] = None) -> tuple[dict[str, Any], dict[str, Any]]:
         super().reset(seed=seed)
 
         # initialization logic
@@ -70,7 +70,7 @@ class GridWorldEnv(gym.Env):
 
         return observation, info
     
-    def step(self, action):
+    def step(self, action) -> tuple[dict[str, Any], float, bool, bool, dict[str, Any]]:
         # game logic
         direction = self._action_to_direction[action]
         self._agent_location = np.clip(
@@ -89,11 +89,11 @@ class GridWorldEnv(gym.Env):
 
         return observation, reward, terminated, truncated, info
     
-    def render(self):
+    def render(self) -> np.typing.NDArray[Any] | None:
         if self.render_mode == "rgb_array":
             return self._render_frame()
         
-    def _render_frame(self):
+    def _render_frame(self) -> np.typing.NDArray[Any] | None:
         if self.window is None and self.render_mode == "human":
             pygame.init()
             pygame.display.init()
@@ -156,7 +156,7 @@ class GridWorldEnv(gym.Env):
                 np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
             )
         
-    def close(self):
+    def close(self) -> None:
         if self.window is not None:
             pygame.display.quit()
             pygame.quit()

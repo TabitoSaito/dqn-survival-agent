@@ -4,6 +4,7 @@ import gymnasium as gym
 import pygame
 
 from utils.constants import Actions
+import utils.helper as helper
 
 
 class GridWorldEnv(gym.Env):
@@ -57,6 +58,9 @@ class GridWorldEnv(gym.Env):
         super().reset(seed=seed)
 
         # initialization logic
+        self._agent_location = self.np_random.integers(0, self.size, size=2, dtype=int)
+
+        self._fruit_locations = helper.get_unique_coordinates((self.size, self.size), self._num_fruits)
 
         observation = self._get_obs()
         info = self._get_info()
@@ -68,10 +72,14 @@ class GridWorldEnv(gym.Env):
     
     def step(self, action):
         # game logic
+        direction = self._action_to_direction[action]
+        self._agent_location = np.clip(
+            self._agent_location + direction, 0, self.size - 1
+        )
 
-        reward = 0
         terminated = False
         truncated = False
+        reward = 0
 
         observation = self._get_obs()
         info = self._get_info()

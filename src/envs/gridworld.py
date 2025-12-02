@@ -82,11 +82,17 @@ class GridWorldEnv(gym.Env):
             food_decay=self.config["food_decay"],
         )
 
-        fruit_locations = helper.get_unique_coordinates(
-            (self.size, self.size), self._num_fruits
-        )
+        row = col = self.size
+        fruit_locations = [
+            np.array([value // row, value % col], dtype=int)
+            for value in self.np_random.choice(
+                range(row * col), self._num_fruits, replace=False
+            )
+        ]
         self._fruits = [
-            Fruit(position, amount=self.config["amount"], reg_time=self.config["reg_time"])
+            Fruit(
+                position, amount=self.config["amount"], reg_time=self.config["reg_time"]
+            )
             for position in fruit_locations
         ]
 

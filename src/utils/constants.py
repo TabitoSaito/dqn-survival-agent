@@ -8,11 +8,8 @@ DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 class Experiences(NamedTuple):
     state: Any
     action: Any
-    reward: Any
     next_state: Any
-    done: Any
-    mask: Any
-    next_mask: Any
+    reward: Any
 
 
 class Actions(Enum):

@@ -20,7 +20,7 @@ class Agent:
         self.optimizer = optim.AdamW(
             self.policy_net.parameters(), lr=config["LR"], amsgrad=True
         )
-        self.memory = ReplayMemory(10000)
+        self.memory = ReplayMemory(config["CAPACITY"])
 
         self.steps_done = 0
 
@@ -36,7 +36,7 @@ class Agent:
                 return self.policy_net(state).max(1).indices.view(1, 1)
         else:
             return torch.tensor(
-                [[random.sample([i for i in range(self.action_size)], 1)]],
+                [random.sample([i for i in range(self.action_size)], 1)],
                 device=DEVICE,
                 dtype=torch.long,
             )

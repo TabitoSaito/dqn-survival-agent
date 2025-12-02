@@ -12,7 +12,8 @@ from envs.gridworld_components import Human, Fruit
 class GridWorldEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, render_mode=None, size: int = 5) -> None:
+    def __init__(self, config, render_mode=None, size: int = 5) -> None:
+        self.config = config
         self.size = size
         self.window_size = 512
         self._num_fruits = 4
@@ -69,23 +70,23 @@ class GridWorldEnv(gym.Env):
         return {"agent": self._agent, "fruits": self._fruits}
 
     def reset(
-        self, options: dict[str, Any], seed: Optional[int] = None
+        self, seed: Optional[int] = None, options: Optional[dict] = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         super().reset(seed=seed)
 
         # initialization logic
         self._agent = Human(
             self.np_random.integers(0, self.size, size=2, dtype=int),
-            max_food=options["max_food"],
-            max_age=options["max_age"],
-            food_decay=options["food_decay"],
+            max_food=self.config["max_food"],
+            max_age=self.config["max_age"],
+            food_decay=self.config["food_decay"],
         )
 
         fruit_locations = helper.get_unique_coordinates(
             (self.size, self.size), self._num_fruits
         )
         self._fruits = [
-            Fruit(position, amount=options["amount"], reg_time=options["reg_time"])
+            Fruit(position, amount=self.config["amount"], reg_time=self.config["reg_time"])
             for position in fruit_locations
         ]
 

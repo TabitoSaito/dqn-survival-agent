@@ -6,10 +6,12 @@ import pygame
 from utils.constants import Actions
 import utils.helper as helper
 
-from gridworld_components import Human, Fruit
+from envs.gridworld_components import Human, Fruit
 
 
 class GridWorldEnv(gym.Env):
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
+
     def __init__(self, render_mode=None, size: int = 5) -> None:
         self.size = size
         self.window_size = 512
@@ -111,7 +113,7 @@ class GridWorldEnv(gym.Env):
             fruit.tick()
         self._agent.tick()
 
-        terminated = self._agent.check_alive()
+        terminated = not self._agent.check_alive()
 
         truncated = False
 

@@ -5,7 +5,6 @@ from utils.constants import FruitStatus
 class WorldObject:
     def __init__(self, pos: np.typing.NDArray[np.int32]) -> None:
         assert pos.shape == (2,), "position has to be a 1d array."
-
         self.pos = pos
 
 

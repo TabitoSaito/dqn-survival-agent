@@ -1,19 +1,33 @@
 import numpy as np
 from utils.constants import FruitStatus
 
-class WorldObject():
+
+class WorldObject:
     def __init__(self, pos: np.typing.NDArray[np.int32]) -> None:
         assert pos.shape == (2,), "position has to be a 1d array."
-        
+
         self.pos = pos
 
 
 class Human(WorldObject):
-    def __init__(self, pos: np.typing.NDArray[np.int32], max_food: float = 100) -> None:
+    def __init__(
+        self,
+        pos: np.typing.NDArray[np.int32],
+        max_food: float = 100,
+        food_decay: float = 5,
+        max_age: int = 1000,
+    ) -> None:
         super().__init__(pos)
         self.max_food = max_food
         self.food = max_food
+        self.food_decay = food_decay
+        self.max_age = max_age
+        self.age = 0
         self.alive = True
+
+    def tick(self):
+        self.age += 1
+        self.food += -self.food_decay
 
     def eat(self, amount: float) -> None:
         """add amount to total food without exceeding max food.
@@ -25,19 +39,22 @@ class Human(WorldObject):
             self.food = self.max_food
         else:
             self.food += amount
-    
+
     def check_alive(self) -> bool:
         """checks if object is still alive.
 
         Returns:
             bool: True if alive
         """
-        if self.food <= 0:
+        if self.food <= 0 or self.age > self.max_age:
             self.alive = False
         return self.alive
-    
+
+
 class Fruit(WorldObject):
-    def __init__(self, pos: np.typing.NDArray[np.int32], amount: float = 30, reg_time: int = 10) -> None:
+    def __init__(
+        self, pos: np.typing.NDArray[np.int32], amount: float = 30, reg_time: int = 10
+    ) -> None:
         super().__init__(pos)
         self.amount = amount
         self.reg_time = reg_time
@@ -45,8 +62,7 @@ class Fruit(WorldObject):
         self.status = FruitStatus.RIPE
 
     def tick(self):
-        """handle regeneration process.
-        """
+        """handle regeneration process."""
         if self.time_until_reg <= 0:
             self.status = FruitStatus.RIPE
         else:
@@ -64,5 +80,3 @@ class Fruit(WorldObject):
             return self.amount
         else:
             return 0
-        
-

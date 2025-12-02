@@ -16,12 +16,19 @@ class GridWorldEnv(gym.Env):
         self._num_fruits = 4
 
         self._agent = Human(np.array([-1, -1], dtype=int))
-        self._fruits = [Fruit(np.array([-1, -1], dtype=int)) for _ in range(self._num_fruits)]
+        self._fruits = [
+            Fruit(np.array([-1, -1], dtype=int)) for _ in range(self._num_fruits)
+        ]
 
         self.observation_space = gym.spaces.Dict(
             {
                 "agent": gym.spaces.Box(0, size - 1, shape=(2,), dtype=int),
-                "fruits": gym.spaces.Tuple([gym.spaces.Box(0, size - 1, shape=(2,), dtype=int) for _ in range(self._num_fruits)])
+                "fruits": gym.spaces.Tuple(
+                    [
+                        gym.spaces.Box(0, size - 1, shape=(2,), dtype=int)
+                        for _ in range(self._num_fruits)
+                    ]
+                ),
             }
         )
 
@@ -46,8 +53,11 @@ class GridWorldEnv(gym.Env):
         Returns:
             dict: Observation with agent and fruits positions
         """
-        return {"agent": self._agent.pos, "fruits": [fruit.pos for fruit in self._fruits]}
-    
+        return {
+            "agent": self._agent.pos,
+            "fruits": [fruit.pos for fruit in self._fruits],
+        }
+
     def _get_info(self) -> dict:
         """Get full observation objects for debugging
 
@@ -55,15 +65,27 @@ class GridWorldEnv(gym.Env):
             dict: agent and fruit objects
         """
         return {"agent": self._agent, "fruits": self._fruits}
-    
-    def reset(self, options: dict[str, Any], seed: Optional[int] = None) -> tuple[dict[str, Any], dict[str, Any]]:
+
+    def reset(
+        self, options: dict[str, Any], seed: Optional[int] = None
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         super().reset(seed=seed)
 
         # initialization logic
-        self._agent = Human(self.np_random.integers(0, self.size, size=2, dtype=int), max_food=options["max_food"])
+        self._agent = Human(
+            self.np_random.integers(0, self.size, size=2, dtype=int),
+            max_food=options["max_food"],
+            max_age=options["max_age"],
+            food_decay=options["food_decay"],
+        )
 
-        fruit_locations = helper.get_unique_coordinates((self.size, self.size), self._num_fruits)
-        self._fruits = [Fruit(position, amount=options["amount"], reg_time=options["reg_time"]) for position in fruit_locations]
+        fruit_locations = helper.get_unique_coordinates(
+            (self.size, self.size), self._num_fruits
+        )
+        self._fruits = [
+            Fruit(position, amount=options["amount"], reg_time=options["reg_time"])
+            for position in fruit_locations
+        ]
 
         observation = self._get_obs()
         info = self._get_info()
@@ -72,17 +94,26 @@ class GridWorldEnv(gym.Env):
             self._render_frame()
 
         return observation, info
-    
+
     def step(self, action) -> tuple[dict[str, Any], float, bool, bool, dict[str, Any]]:
         # game logic
         direction = self._action_to_direction[action]
-        self._agent.pos = np.clip(
-            self._agent.pos + direction, 0, self.size - 1
-        )
+        self._agent.pos = np.clip(self._agent.pos + direction, 0, self.size - 1)
 
-        terminated = False
-        truncated = False
         reward = 0
+
+        for fruit in self._fruits:
+            if np.array_equal(self._agent.pos, fruit.pos):
+                amount = fruit.harvest()
+                if amount > 0:
+                    self._agent.eat(amount)
+                    reward += 1
+            fruit.tick()
+        self._agent.tick()
+
+        terminated = self._agent.check_alive()
+
+        truncated = False
 
         observation = self._get_obs()
         info = self._get_info()
@@ -91,26 +122,22 @@ class GridWorldEnv(gym.Env):
             self._render_frame()
 
         return observation, reward, terminated, truncated, info
-    
+
     def render(self) -> np.typing.NDArray[Any] | None:
         if self.render_mode == "rgb_array":
             return self._render_frame()
-        
+
     def _render_frame(self) -> np.typing.NDArray[Any] | None:
         if self.window is None and self.render_mode == "human":
             pygame.init()
             pygame.display.init()
-            self.window = pygame.display.set_mode(
-                (self.window_size, self.window_size)
-            )
+            self.window = pygame.display.set_mode((self.window_size, self.window_size))
         if self.clock is None and self.render_mode == "human":
             self.clock = pygame.time.Clock()
 
         canvas = pygame.Surface((self.window_size, self.window_size))
         canvas.fill((255, 255, 255))
-        pix_square_size = (
-            self.window_size / self.size
-        )
+        pix_square_size = self.window_size / self.size
 
         # draw fruits
         for fruit in self._fruits:
@@ -122,7 +149,7 @@ class GridWorldEnv(gym.Env):
                     (pix_square_size, pix_square_size),
                 ),
             )
-        
+
         # draw agent
         pygame.draw.circle(
             canvas,
@@ -158,9 +185,8 @@ class GridWorldEnv(gym.Env):
             return np.transpose(
                 np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
             )
-        
+
     def close(self) -> None:
         if self.window is not None:
             pygame.display.quit()
             pygame.quit()
-

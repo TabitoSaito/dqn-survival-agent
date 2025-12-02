@@ -9,7 +9,7 @@ class WorldObject():
 
 
 class Human(WorldObject):
-    def __init__(self, pos: np.typing.NDArray[np.int32], max_food: float) -> None:
+    def __init__(self, pos: np.typing.NDArray[np.int32], max_food: float = 100) -> None:
         super().__init__(pos)
         self.max_food = max_food
         self.food = max_food
@@ -37,7 +37,7 @@ class Human(WorldObject):
         return self.alive
     
 class Fruit(WorldObject):
-    def __init__(self, pos: np.typing.NDArray[np.int32], amount: float, reg_time: int) -> None:
+    def __init__(self, pos: np.typing.NDArray[np.int32], amount: float = 30, reg_time: int = 10) -> None:
         super().__init__(pos)
         self.amount = amount
         self.reg_time = reg_time

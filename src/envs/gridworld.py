@@ -6,6 +6,8 @@ import pygame
 from utils.constants import Actions
 import utils.helper as helper
 
+from gridworld_components import Human, Fruit
+
 
 class GridWorldEnv(gym.Env):
     def __init__(self, render_mode=None, size: int = 5) -> None:
@@ -13,8 +15,8 @@ class GridWorldEnv(gym.Env):
         self.window_size = 512
         self._num_fruits = 4
 
-        self._agent_location = np.array([-1, -1], dtype=int)
-        self._fruit_locations = [np.array([-1, -1], dtype=int) for _ in range(self._num_fruits)]
+        self._agent = Human(np.array([-1, -1], dtype=int))
+        self._fruits = [Fruit(np.array([-1, -1], dtype=int)) for _ in range(self._num_fruits)]
 
         self.observation_space = gym.spaces.Dict(
             {
@@ -44,23 +46,24 @@ class GridWorldEnv(gym.Env):
         Returns:
             dict: Observation with agent and fruits positions
         """
-        return {"agent": self._agent_location, "fruits": self._fruit_locations}
+        return {"agent": self._agent.pos, "fruits": [fruit.pos for fruit in self._fruits]}
     
     def _get_info(self) -> dict:
-        """Get relevant info if needed. Not Implemented.
+        """Get full observation objects for debugging
 
         Returns:
-            dict: Info content
+            dict: agent and fruit objects
         """
-        return {}
+        return {"agent": self._agent, "fruits": self._fruits}
     
-    def reset(self, seed: Optional[int] = None, options: Optional[dict] = None) -> tuple[dict[str, Any], dict[str, Any]]:
+    def reset(self, options: dict[str, Any], seed: Optional[int] = None) -> tuple[dict[str, Any], dict[str, Any]]:
         super().reset(seed=seed)
 
         # initialization logic
-        self._agent_location = self.np_random.integers(0, self.size, size=2, dtype=int)
+        self._agent = Human(self.np_random.integers(0, self.size, size=2, dtype=int), max_food=options["max_food"])
 
-        self._fruit_locations = helper.get_unique_coordinates((self.size, self.size), self._num_fruits)
+        fruit_locations = helper.get_unique_coordinates((self.size, self.size), self._num_fruits)
+        self._fruits = [Fruit(position, amount=options["amount"], reg_time=options["reg_time"]) for position in fruit_locations]
 
         observation = self._get_obs()
         info = self._get_info()
@@ -73,8 +76,8 @@ class GridWorldEnv(gym.Env):
     def step(self, action) -> tuple[dict[str, Any], float, bool, bool, dict[str, Any]]:
         # game logic
         direction = self._action_to_direction[action]
-        self._agent_location = np.clip(
-            self._agent_location + direction, 0, self.size - 1
+        self._agent.pos = np.clip(
+            self._agent.pos + direction, 0, self.size - 1
         )
 
         terminated = False
@@ -110,12 +113,12 @@ class GridWorldEnv(gym.Env):
         )
 
         # draw fruits
-        for fruit_location in self._fruit_locations:
+        for fruit in self._fruits:
             pygame.draw.rect(
                 canvas,
                 (255, 0, 0),
                 pygame.Rect(
-                    pix_square_size * fruit_location,
+                    pix_square_size * fruit.pos,
                     (pix_square_size, pix_square_size),
                 ),
             )
@@ -124,7 +127,7 @@ class GridWorldEnv(gym.Env):
         pygame.draw.circle(
             canvas,
             (0, 0, 255),
-            (self._agent_location + 0.5) * pix_square_size,
+            (self._agent.pos + 0.5) * pix_square_size,
             pix_square_size / 3,
         )
 

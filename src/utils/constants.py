@@ -1,8 +1,18 @@
 from enum import Enum, auto
-from typing import Any
+from typing import Any, NamedTuple
 import torch
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+
+class Experiences(NamedTuple):
+    state: Any
+    action: Any
+    reward: Any
+    next_state: Any
+    done: Any
+    mask: Any
+    next_mask: Any
 
 
 class Actions(Enum):

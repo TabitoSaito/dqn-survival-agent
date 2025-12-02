@@ -1,16 +1,6 @@
-from typing import NamedTuple, Any
 from collections import deque
+from utils.constants import Experiences
 import random
-
-
-class Experiences(NamedTuple):
-    state: Any
-    action: Any
-    reward: Any
-    next_state: Any
-    done: Any
-    mask: Any
-    next_mask: Any
 
 
 class ReplayMemory:

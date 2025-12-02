@@ -1,0 +1,5 @@
+EPS_START: 1 # epsilon starting value
+EPS_END: 0.01 # endvalue of epsilon
+EPS_DECAY: 2500 # steps until epsilon endvalue is reached
+TAU: 0.005 # soft-update rate
+LR: 3e-4 # learning rate

@@ -24,12 +24,15 @@ class Agent:
 
         self.steps_done = 0
 
-    def act(self, state):
+    def act(self, state, train_mode=True):
         sample = random.random()
 
         epsilon = self.config["EPS_END"] + (
             self.config["EPS_START"] - self.config["EPS_END"]
         ) * math.exp(-1.0 * self.steps_done / self.config["EPS_DECAY"])
+
+        if train_mode:
+            self.steps_done += 1
 
         if sample > epsilon:
             with torch.no_grad():

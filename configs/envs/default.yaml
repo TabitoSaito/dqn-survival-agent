@@ -1,7 +1,7 @@
 # humans
 max_food: 100 # max food the human can store
 food_decay: 5 # food lost per tick
-max_age: 1000 # max ticks before death
+max_age: 200 # max ticks before death
 # fruits
 amount: 30 # amount food given on harvest
-reg_time: 50 # time to replenish food
+reg_time: 10 # time to replenish food

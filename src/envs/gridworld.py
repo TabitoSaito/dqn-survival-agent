@@ -3,8 +3,7 @@ import numpy as np
 import gymnasium as gym
 import pygame
 
-from utils.constants import Actions
-import utils.helper as helper
+from utils.constants import Actions, FruitStatus
 
 from envs.gridworld_components import Human, Fruit
 
@@ -25,13 +24,14 @@ class GridWorldEnv(gym.Env):
 
         self.observation_space = gym.spaces.Dict(
             {
-                "agent": gym.spaces.Box(0, size - 1, shape=(2,), dtype=int),
-                "fruits": gym.spaces.Tuple(
+                "agent_pos": gym.spaces.Box(0, size - 1, shape=(2,), dtype=int),
+                "fruits_pos": gym.spaces.Tuple(
                     [
                         gym.spaces.Box(0, size - 1, shape=(2,), dtype=int)
                         for _ in range(self._num_fruits)
                     ]
                 ),
+                "fruits_status": gym.spaces.MultiBinary(self._num_fruits)
             }
         )
 
@@ -57,8 +57,9 @@ class GridWorldEnv(gym.Env):
             dict: Observation with agent and fruits positions
         """
         return {
-            "agent": self._agent.pos,
-            "fruits": [fruit.pos for fruit in self._fruits],
+            "agent_pos": self._agent.pos,
+            "fruits_pos": [fruit.pos for fruit in self._fruits],
+            "fruits_status": [1 if fruit.status == FruitStatus.RIPE else 0 for fruit in self._fruits]
         }
 
     def _get_info(self) -> dict:

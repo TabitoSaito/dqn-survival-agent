@@ -8,7 +8,7 @@ from buffers.replay_memory import ReplayMemory
 from utils.constants import DEVICE, Experiences
 
 
-class Agent:
+class DQNAgent:
     def __init__(self, action_size, config, network: nn.Module) -> None:
         self.action_size = action_size
         self.config = config
@@ -20,6 +20,7 @@ class Agent:
         self.optimizer = optim.AdamW(
             self.policy_net.parameters(), lr=config["LR"], amsgrad=True
         )
+        self.criterion = nn.SmoothL1Loss()
         self.memory = ReplayMemory(config["CAPACITY"])
 
         self.steps_done = 0
@@ -77,14 +78,15 @@ class Agent:
             next_state_values * self.config["GAMMA"]
         ) + reward_batch
 
-        criterion = nn.SmoothL1Loss()
-        loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
+        loss = self.criterion(state_action_values, expected_state_action_values.unsqueeze(1))
 
         self.optimizer.zero_grad()
         loss.backward()
 
         torch.nn.utils.clip_grad_value_(self.policy_net.parameters(), 100)
         self.optimizer.step()
+
+        self.update_net()
 
     def update_net(self):
         target_net_state_dict = self.target_net.state_dict()

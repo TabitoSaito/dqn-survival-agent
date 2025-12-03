@@ -80,4 +80,4 @@ def eval_agent(agent, env, runs=1000, seed=None):
                 break
         scores += score
 
-    print(f"Evaluated on {runs} episodes with Avg. Reward {scores/runs:2f}")
+    print(f"Evaluated on {runs} episodes with Avg. Reward {scores/runs:.2f}")

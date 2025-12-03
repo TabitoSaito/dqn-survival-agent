@@ -3,7 +3,7 @@ from gymnasium.wrappers import FlattenObservation
 
 from envs.gridworld import GridWorldEnv
 from networks.dqn_networks import Network
-from agents.dqn_agent import Agent
+from agents.dqn_agent import DQNAgent
 from train.train_loop import train_loop
 from train.evaluation import render_run, eval_agent
 
@@ -22,7 +22,7 @@ num_obs = len(state)
 
 network = Network(num_obs, num_actions)
 
-agent = Agent(num_actions, config=agent_config, network=network)
+agent = DQNAgent(num_actions, config=agent_config, network=network)
 
 train_loop(agent, env, seed=1, episodes=10000)
 

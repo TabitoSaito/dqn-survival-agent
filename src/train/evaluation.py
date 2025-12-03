@@ -21,18 +21,14 @@ def render_run(agent, env, run_name: str, runs: int = 10, seed=None):
             score += reward
             reward = torch.tensor([reward], device=DEVICE)
             done = terminated or truncated
-
-            if terminated:
-                next_state = None
-            else:
-                next_state = torch.tensor(
-                    obs, dtype=torch.float32, device=DEVICE
-                ).unsqueeze(0)
-
-            agent.step(state, action, next_state, reward)
+            next_state = torch.tensor(
+                obs, dtype=torch.float32, device=DEVICE
+            ).unsqueeze(0)
 
             frame = env.render()
             frames.append(frame)
+
+            state = next_state
 
             if done:
                 break
@@ -66,15 +62,11 @@ def eval_agent(agent, env, runs=1000, seed=None):
             score += reward
             reward = torch.tensor([reward], device=DEVICE)
             done = terminated or truncated
+            next_state = torch.tensor(
+                obs, dtype=torch.float32, device=DEVICE
+            ).unsqueeze(0)
 
-            if terminated:
-                next_state = None
-            else:
-                next_state = torch.tensor(
-                    obs, dtype=torch.float32, device=DEVICE
-                ).unsqueeze(0)
-
-            agent.step(state, action, next_state, reward)
+            state = next_state
 
             if done:
                 break

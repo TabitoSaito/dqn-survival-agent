@@ -21,17 +21,17 @@ def train_loop(agent, env, episodes=0, seed=None):
                 score += reward
                 reward = torch.tensor([reward], device=DEVICE)
                 done = terminated or truncated
+                done = torch.tensor([done], device=DEVICE, dtype=torch.float32)
 
-                if terminated:
-                    next_state = None
-                else:
-                    next_state = torch.tensor(
-                        obs, dtype=torch.float32, device=DEVICE
-                    ).unsqueeze(0)
+                next_state = torch.tensor(
+                    obs, dtype=torch.float32, device=DEVICE
+                ).unsqueeze(0)
 
-                agent.step(state, action, next_state, reward)
+                agent.step(state, action, next_state, reward, done)
 
-                if done:
+                state = next_state
+
+                if terminated or truncated:
                     scores_on_100_episodes.append(score)
                     steps_on_100_episodes.append(t)
                     break

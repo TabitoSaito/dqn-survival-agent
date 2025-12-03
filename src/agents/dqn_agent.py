@@ -45,38 +45,27 @@ class DQNAgent:
                 dtype=torch.long,
             )
 
-    def step(self, state, action, next_state, reward):
-        self.memory.push(state, action, next_state, reward)
+    def step(self, state, action, next_state, reward, done):
+        self.memory.push(state, action, next_state, reward, done)
         if len(self.memory) > self.config["MINI_BATCH_SIZE"]:
             experiences = self.memory.sample(self.config["MINI_BATCH_SIZE"])
             batch = Experiences(*zip(*experiences))
             self.learn(batch)
 
     def learn(self, batch):
-        non_final_mask = torch.tensor(
-            tuple(map(lambda s: s is not None, batch.next_state)),
-            device=DEVICE,
-            dtype=torch.bool,
-        )
-        non_final_next_states = torch.cat(
-            [s for s in batch.next_state if s is not None]
-        )
-
         state_batch = torch.cat(batch.state)
+        next_state_batch = torch.cat(batch.next_state)
         action_batch = torch.cat(batch.action)
         reward_batch = torch.cat(batch.reward)
+        done_batch = torch.cat(batch.done)
 
         state_action_values = self.policy_net(state_batch).gather(1, action_batch)
 
-        next_state_values = torch.zeros(self.config["MINI_BATCH_SIZE"], device=DEVICE)
-        with torch.no_grad():
-            next_state_values[non_final_mask] = (
-                self.target_net(non_final_next_states).max(1).values
-            )
+        next_state_values = self.target_net(next_state_batch).max(1).values
 
         expected_state_action_values = (
             next_state_values * self.config["GAMMA"]
-        ) + reward_batch
+        ) + reward_batch * (1 - done_batch)
 
         loss = self.criterion(state_action_values, expected_state_action_values.unsqueeze(1))
 

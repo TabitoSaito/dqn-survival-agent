@@ -10,6 +10,7 @@ class Experiences(NamedTuple):
     action: Any
     next_state: Any
     reward: Any
+    done: Any
 
 
 class Actions(Enum):

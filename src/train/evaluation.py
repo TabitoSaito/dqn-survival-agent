@@ -19,7 +19,6 @@ def render_run(agent, env, run_name: str, runs: int = 10, seed=None):
             obs, reward, terminated, truncated, info = env.step(action.item())
 
             score += reward
-            reward = torch.tensor([reward], device=DEVICE)
             done = terminated or truncated
             next_state = torch.tensor(
                 obs, dtype=torch.float32, device=DEVICE
@@ -39,7 +38,7 @@ def render_run(agent, env, run_name: str, runs: int = 10, seed=None):
             f"src/replays/{run_name}_{i + 1}.mp4",
             fourcc,
             env.metadata["render_fps"],
-            (frame.shape[0], frame.shape[1]),
+            (frame.shape[1], frame.shape[0]),
         )
         for frame in frames:
             out.write(frame)
@@ -60,7 +59,6 @@ def eval_agent(agent, env, runs=1000, seed=None):
             obs, reward, terminated, truncated, info = env.step(action.item())
 
             score += reward
-            reward = torch.tensor([reward], device=DEVICE)
             done = terminated or truncated
             next_state = torch.tensor(
                 obs, dtype=torch.float32, device=DEVICE

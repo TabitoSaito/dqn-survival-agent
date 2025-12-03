@@ -2,7 +2,7 @@ import yaml
 from gymnasium.wrappers import FlattenObservation
 
 from envs.gridworld import GridWorldEnv
-from networks.dqn_networks import Network
+from networks.dqn_networks import DQN, DuelingDQN
 from agents.dqn_agent import DQNAgent, DoubleDQNAgent
 from train.train_loop import train_loop
 from train.evaluation import render_run, eval_agent
@@ -20,7 +20,7 @@ state, info = env.reset()
 num_actions = env.action_space.n
 num_obs = len(state)
 
-agent = DoubleDQNAgent(num_actions, num_obs, config=agent_config, network=Network)
+agent = DoubleDQNAgent(num_actions, num_obs, config=agent_config, network=DuelingDQN)
 
 train_loop(agent, env, episodes=5000)
 

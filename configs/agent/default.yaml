@@ -6,3 +6,6 @@ GAMMA: 0.99 # discount factor
 LR: !!float 3e-2 # learning rate
 CAPACITY: 10000 # capacity of replay memory
 MINI_BATCH_SIZE: 124 # batch size of replay samples
+# PER
+ALPHA: 0.6
+BETA: 0.4

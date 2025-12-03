@@ -65,6 +65,12 @@ class DQNAgent:
         reward_batch = torch.cat(batch.reward)
         done_batch = torch.cat(batch.done)
 
+        try:
+            self.policy_net.reset_noise()
+            self.target_net.reset_noise()
+        except AttributeError:
+            pass
+
         state_action_values = self.policy_net(state_batch).gather(1, action_batch)
 
         with torch.no_grad():
@@ -150,6 +156,12 @@ class DoubleDQNAgent:
         action_batch = torch.cat(batch.action)
         reward_batch = torch.cat(batch.reward)
         done_batch = torch.cat(batch.done)
+
+        try:
+            self.policy_net.reset_noise()
+            self.target_net.reset_noise()
+        except AttributeError:
+            pass
 
         state_action_values = self.policy_net(state_batch).gather(1, action_batch)
 

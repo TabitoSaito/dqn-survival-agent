@@ -4,11 +4,11 @@ from networks.layers import NoisyLayer
 
 
 class DQN(nn.Module):
-    def __init__(self, n_observations, n_actions) -> None:
+    def __init__(self, state_size, action_size) -> None:
         super(DQN, self).__init__()
-        self.fc1 = nn.Linear(n_observations, 64)
+        self.fc1 = nn.Linear(state_size, 64)
         self.fc2 = nn.Linear(64, 64)
-        self.fc3 = nn.Linear(64, n_actions)
+        self.fc3 = nn.Linear(64, action_size)
 
     def forward(self, state):
         x = F.relu(self.fc1(state))
@@ -17,13 +17,13 @@ class DQN(nn.Module):
 
 
 class DuelingDQN(nn.Module):
-    def __init__(self, n_observations, n_actions) -> None:
+    def __init__(self, state_size, action_size) -> None:
         super(DuelingDQN, self).__init__()
-        self.fc1 = nn.Linear(n_observations, 64)
+        self.fc1 = nn.Linear(state_size, 64)
         self.fc2 = nn.Linear(64, 64)
 
         self.value_stream = nn.Linear(64, 1)
-        self.advantage_stream = nn.Linear(64, n_actions)
+        self.advantage_stream = nn.Linear(64, action_size)
 
     def forward(self, state):
         x = F.relu(self.fc1(state))
@@ -53,3 +53,29 @@ class NoisyDQN(nn.Module):
         self.fc1.reset_noise()
         self.fc2.reset_noise()
         self.fc3.reset_noise()
+
+class NoisyDuelingDQN(nn.Module):
+    def __init__(self, state_size, action_size):
+        super().__init__()
+        self.fc1 = NoisyLayer(state_size, 64)
+        self.fc2 = NoisyLayer(64, 64)
+
+        self.value_stream = NoisyLayer(64, 1)
+        self.advantage_stream = NoisyLayer(64, action_size)
+
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        
+        value = self.value_stream(x)
+        advantage = self.advantage_stream(x)
+
+        q_values = value + advantage - advantage.mean(dim=1, keepdim=True)
+
+        return q_values
+
+    def reset_noise(self):
+        self.fc1.reset_noise()
+        self.fc2.reset_noise()
+        self.value_stream.reset_noise()
+        self.advantage_stream.reset_noise()

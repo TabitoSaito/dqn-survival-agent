@@ -1,11 +1,11 @@
-EPS_START: 1 # epsilon starting value
+EPS_START: 0.9 # epsilon starting value
 EPS_END: 0.01 # endvalue of epsilon
-EPS_DECAY: 1000 # steps until epsilon endvalue is reached
-TAU: 0.01 # soft-update rate
+EPS_DECAY: 25000 # steps until epsilon endvalue is reached
+TAU: 0.005 # soft-update rate
 GAMMA: 0.99 # discount factor
-LR: !!float 3e-2 # learning rate
-CAPACITY: 10000 # capacity of replay memory
-MINI_BATCH_SIZE: 124 # batch size of replay samples
+LR: !!float 3e-4 # learning rate
+CAPACITY: 100000 # capacity of replay memory
+MINI_BATCH_SIZE: 128 # batch size of replay samples
 # PER
 ALPHA: 0.6
 BETA: 0.4

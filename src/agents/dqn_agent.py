@@ -35,28 +35,28 @@ class DQNAgent:
 
         sample = random.random()
 
-        epsilon = self.config["EPS_END"] + (
+        self.epsilon = self.config["EPS_END"] + (
             self.config["EPS_START"] - self.config["EPS_END"]
         ) * math.exp(-1.0 * self.steps_done / self.config["EPS_DECAY"])
 
         if train_mode:
             self.steps_done += 1
 
-        if sample > epsilon or not train_mode:
-            return q_values.argmax(keepdim=True)
+        if sample > self.epsilon or not train_mode:
+            return q_values.argmax(keepdim=True), q_values
         else:
             return torch.tensor(
                 [random.sample([i for i in range(self.action_size)], 1)],
                 device=DEVICE,
                 dtype=torch.long,
-            )
+            ), q_values
 
     def step(self, state, action, next_state, reward, done):
         self.memory.push(state, action, next_state, reward, done)
         if len(self.memory) > self.config["MINI_BATCH_SIZE"]:
             experiences = self.memory.sample(self.config["MINI_BATCH_SIZE"])
             batch = Experiences(*zip(*experiences))
-            self.learn(batch)
+            return self.learn(batch)
 
     def learn(self, batch):
         state_batch = torch.cat(batch.state)
@@ -89,6 +89,8 @@ class DQNAgent:
         self.optimizer.step()
 
         self.update_net()
+
+        return loss.item()
 
     def update_net(self):
         target_net_state_dict = self.target_net.state_dict()
@@ -126,21 +128,21 @@ class DQNAgentPER:
 
         sample = random.random()
 
-        epsilon = self.config["EPS_END"] + (
+        self.epsilon = self.config["EPS_END"] + (
             self.config["EPS_START"] - self.config["EPS_END"]
         ) * math.exp(-1.0 * self.steps_done / self.config["EPS_DECAY"])
 
         if train_mode:
             self.steps_done += 1
 
-        if sample > epsilon or not train_mode:
-            return q_values.argmax(keepdim=True)
+        if sample > self.epsilon or not train_mode:
+            return q_values.argmax(keepdim=True), q_values
         else:
             return torch.tensor(
                 [random.sample([i for i in range(self.action_size)], 1)],
                 device=DEVICE,
                 dtype=torch.long,
-            )
+            ), q_values
 
     def step(self, state, action, next_state, reward, done):
         with torch.no_grad():
@@ -152,7 +154,7 @@ class DQNAgentPER:
         if len(self.memory) > self.config["MINI_BATCH_SIZE"]:
             experiences, indices, weights = self.memory.sample(self.config["MINI_BATCH_SIZE"])
             batch = Experiences(*zip(*experiences))
-            self.learn(batch, indices, weights)
+            return self.learn(batch, indices, weights)
 
     def learn(self, batch, indices, weights):
         state_batch = torch.cat(batch.state)
@@ -192,6 +194,8 @@ class DQNAgentPER:
 
         self.update_net()
 
+        return loss.item()
+
     def update_net(self):
         target_net_state_dict = self.target_net.state_dict()
         policy_net_state_dict = self.policy_net.state_dict()
@@ -213,8 +217,8 @@ class DoubleDQNAgent:
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 
-        self.optimizer = optim.AdamW(
-            self.policy_net.parameters(), lr=config["LR"], amsgrad=True
+        self.optimizer = optim.Adam(
+            self.policy_net.parameters(), lr=config["LR"]
         )
         self.criterion = nn.SmoothL1Loss()
         self.memory = ReplayMemory(config["CAPACITY"])
@@ -229,28 +233,28 @@ class DoubleDQNAgent:
 
         sample = random.random()
 
-        epsilon = self.config["EPS_END"] + (
+        self.epsilon = self.config["EPS_END"] + (
             self.config["EPS_START"] - self.config["EPS_END"]
         ) * math.exp(-1.0 * self.steps_done / self.config["EPS_DECAY"])
 
         if train_mode:
             self.steps_done += 1
 
-        if sample > epsilon or not train_mode:
-            return q_values.argmax(keepdim=True)
+        if sample > self.epsilon or not train_mode:
+            return q_values.argmax(keepdim=True), q_values
         else:
             return torch.tensor(
                 [random.sample([i for i in range(self.action_size)], 1)],
                 device=DEVICE,
                 dtype=torch.long,
-            )
+            ), q_values
 
     def step(self, state, action, next_state, reward, done):
-        self.memory.push(state, action, next_state, reward, done)
+        self.memory.push(state.clone().detach(), action.clone().detach(), next_state.clone().detach(), reward.clone().detach(), done.clone().detach())
         if len(self.memory) > self.config["MINI_BATCH_SIZE"]:
             experiences = self.memory.sample(self.config["MINI_BATCH_SIZE"])
             batch = Experiences(*zip(*experiences))
-            self.learn(batch)
+            return self.learn(batch)
 
     def learn(self, batch):
         state_batch = torch.cat(batch.state)
@@ -284,6 +288,7 @@ class DoubleDQNAgent:
         self.optimizer.step()
 
         self.update_net()
+        return loss.item()
 
     def update_net(self):
         target_net_state_dict = self.target_net.state_dict()
@@ -321,21 +326,21 @@ class DoubleDQNAgentPER:
 
         sample = random.random()
 
-        epsilon = self.config["EPS_END"] + (
+        self.epsilon = self.config["EPS_END"] + (
             self.config["EPS_START"] - self.config["EPS_END"]
         ) * math.exp(-1.0 * self.steps_done / self.config["EPS_DECAY"])
 
         if train_mode:
             self.steps_done += 1
 
-        if sample > epsilon or not train_mode:
-            return q_values.argmax(keepdim=True)
+        if sample > self.epsilon or not train_mode:
+            return q_values.argmax(keepdim=True), q_values
         else:
             return torch.tensor(
                 [random.sample([i for i in range(self.action_size)], 1)],
                 device=DEVICE,
                 dtype=torch.long,
-            )
+            ), q_values
 
     def step(self, state, action, next_state, reward, done):
         with torch.no_grad():
@@ -347,7 +352,7 @@ class DoubleDQNAgentPER:
         if len(self.memory) > self.config["MINI_BATCH_SIZE"]:
             experiences, indices, weights = self.memory.sample(self.config["MINI_BATCH_SIZE"])
             batch = Experiences(*zip(*experiences))
-            self.learn(batch, indices, weights)
+            return self.learn(batch, indices, weights)
 
     def learn(self, batch, indices, weights):
         state_batch = torch.cat(batch.state)
@@ -387,6 +392,8 @@ class DoubleDQNAgentPER:
         self.optimizer.step()
 
         self.update_net()
+
+        return loss.item()
 
     def update_net(self):
         target_net_state_dict = self.target_net.state_dict()

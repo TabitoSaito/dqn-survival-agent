@@ -6,9 +6,9 @@ from networks.layers import NoisyLayer
 class DQN(nn.Module):
     def __init__(self, state_size, action_size) -> None:
         super(DQN, self).__init__()
-        self.fc1 = nn.Linear(state_size, 64)
-        self.fc2 = nn.Linear(64, 64)
-        self.fc3 = nn.Linear(64, action_size)
+        self.fc1 = nn.Linear(state_size, 128)
+        self.fc2 = nn.Linear(128, 128)
+        self.fc3 = nn.Linear(128, action_size)
 
     def forward(self, state):
         x = F.relu(self.fc1(state))
@@ -19,11 +19,11 @@ class DQN(nn.Module):
 class DuelingDQN(nn.Module):
     def __init__(self, state_size, action_size) -> None:
         super(DuelingDQN, self).__init__()
-        self.fc1 = nn.Linear(state_size, 64)
-        self.fc2 = nn.Linear(64, 64)
+        self.fc1 = nn.Linear(state_size, 128)
+        self.fc2 = nn.Linear(128, 128)
 
-        self.value_stream = nn.Linear(64, 1)
-        self.advantage_stream = nn.Linear(64, action_size)
+        self.value_stream = nn.Linear(128, 1)
+        self.advantage_stream = nn.Linear(128, action_size)
 
     def forward(self, state):
         x = F.relu(self.fc1(state))
@@ -40,9 +40,9 @@ class DuelingDQN(nn.Module):
 class NoisyDQN(nn.Module):
     def __init__(self, state_size, action_size):
         super().__init__()
-        self.fc1 = NoisyLayer(state_size, 64)
-        self.fc2 = NoisyLayer(64, 64)
-        self.fc3 = NoisyLayer(64, action_size)
+        self.fc1 = NoisyLayer(state_size, 128)
+        self.fc2 = NoisyLayer(128, 128)
+        self.fc3 = NoisyLayer(128, action_size)
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
@@ -57,11 +57,11 @@ class NoisyDQN(nn.Module):
 class NoisyDuelingDQN(nn.Module):
     def __init__(self, state_size, action_size):
         super().__init__()
-        self.fc1 = NoisyLayer(state_size, 64)
-        self.fc2 = NoisyLayer(64, 64)
+        self.fc1 = NoisyLayer(state_size, 128)
+        self.fc2 = NoisyLayer(128, 128)
 
-        self.value_stream = NoisyLayer(64, 1)
-        self.advantage_stream = NoisyLayer(64, action_size)
+        self.value_stream = NoisyLayer(128, 1)
+        self.advantage_stream = NoisyLayer(128, action_size)
 
     def forward(self, x):
         x = F.relu(self.fc1(x))

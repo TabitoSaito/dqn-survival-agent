@@ -15,7 +15,7 @@ def render_run(agent, env, run_name: str, runs: int = 10, seed=None):
 
         score = 0
         for t in count():
-            action = agent.act(state, train_mode=False)
+            action, _ = agent.act(state, train_mode=False)
             obs, reward, terminated, truncated, info = env.step(action.item())
 
             score += reward
@@ -55,7 +55,7 @@ def eval_agent(agent, env, runs=1000, seed=None):
 
         score = 0
         for t in count():
-            action = agent.act(state, train_mode=False)
+            action, _ = agent.act(state, train_mode=False)
             obs, reward, terminated, truncated, info = env.step(action.item())
 
             score += reward

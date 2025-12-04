@@ -8,7 +8,7 @@ from train.plots import plot_training
 from multiprocessing import Process, Queue
 
 
-def train_loop(agent, env, episodes=0, seed=None):
+def train_loop(agent, env, episodes=0, seed=None, dyn_print=True, plot=True):
     scores = []
     steps = []
     best_avg_reward = -float("inf")
@@ -16,8 +16,9 @@ def train_loop(agent, env, episodes=0, seed=None):
     queue1 = Queue(maxsize=1000)
     queue2 = Queue(maxsize=1000)
 
-    p = Process(target=plot_training, args=(queue1, queue2,), daemon=False)
-    p.start()
+    if plot:
+        p = Process(target=plot_training, args=(queue1, queue2,), daemon=False)
+        p.start()
 
     try:
         for cur_episode in count(start=1):
@@ -46,7 +47,8 @@ def train_loop(agent, env, episodes=0, seed=None):
 
                 state = next_state
 
-                queue2.put((agent.epsilon, loss))
+                if plot:
+                    queue2.put((agent.epsilon, loss))
 
                 if terminated or truncated:
                     scores.append(score)
@@ -58,17 +60,19 @@ def train_loop(agent, env, episodes=0, seed=None):
             if np.mean(scores[-100:]) > best_avg_reward and cur_episode > 100:
                 best_avg_reward = np.mean(scores[-100:])
 
-            print(
-                f"\rEpisode {cur_episode}\t\tAverage Score: {np.mean(scores[-100:]):.2f}\t\tAverage steps: {np.mean(steps[-100:]):.2f}\t\tEpsilon: {agent.epsilon:.4f}",
-                end="",
-            )
-
-            if cur_episode % 100 == 0:
+            if dyn_print:
                 print(
                     f"\rEpisode {cur_episode}\t\tAverage Score: {np.mean(scores[-100:]):.2f}\t\tAverage steps: {np.mean(steps[-100:]):.2f}\t\tEpsilon: {agent.epsilon:.4f}",
+                    end="",
                 )
+
+                if cur_episode % 100 == 0:
+                    print(
+                        f"\rEpisode {cur_episode}\t\tAverage Score: {np.mean(scores[-100:]):.2f}\t\tAverage steps: {np.mean(steps[-100:]):.2f}\t\tEpsilon: {agent.epsilon:.4f}",
+                    )
             
-            queue1.put((scores, best_avg_reward, q_values_mean))
+            if plot:
+                queue1.put((scores, best_avg_reward, q_values_mean))
 
             if episodes == 0:
                 continue
@@ -77,5 +81,7 @@ def train_loop(agent, env, episodes=0, seed=None):
     except KeyboardInterrupt:
         pass
 
-    if cur_episode % 100 != 0:
+    if cur_episode % 100 != 0 and dyn_print:
         print("")
+
+    return np.mean(scores[-100:])

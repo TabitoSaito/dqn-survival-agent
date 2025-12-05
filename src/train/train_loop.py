@@ -1,14 +1,13 @@
 import torch
-from itertools import count
+from itertools import count, cycle
 import numpy as np
-from collections import deque
-import matplotlib.pyplot as plt
 from utils.constants import DEVICE
 from train.plots import plot_training
 from multiprocessing import Process, Queue
+from typing import Iterable, Optional
 
 
-def train_loop(agent, env, episodes=0, seed=None, dyn_print=True, plot=True):
+def train_loop(agent, env, episodes=0, seeds: Optional[Iterable[int]] = None, dyn_print=True, plot=True):
     scores = []
     steps = []
     best_avg_reward = -float("inf")
@@ -16,12 +15,15 @@ def train_loop(agent, env, episodes=0, seed=None, dyn_print=True, plot=True):
     queue1 = Queue(maxsize=1000)
     queue2 = Queue(maxsize=1000)
 
+    seeds = cycle(seeds) if seeds is Iterable else None
+
     if plot:
         p = Process(target=plot_training, args=(queue1, queue2,), daemon=False)
         p.start()
 
     try:
         for cur_episode in count(start=1):
+            seed = next(seeds) if seeds is Iterable else None
             state, info = env.reset(seed=seed)
             state = torch.tensor(state, dtype=torch.float32, device=DEVICE).unsqueeze(0)
 

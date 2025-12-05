@@ -1,8 +1,62 @@
-EPS_START: [0.9] # epsilon starting value
-EPS_END: [0.01] # endvalue of epsilon
-EPS_DECAY: [25000] # steps until epsilon endvalue is reached
-TAU: [0.005] # soft-update rate
-GAMMA: 0.99 # discount factor
-LR: [3e-4] # learning rate
-CAPACITY: [100000] # capacity of replay memory
-MINI_BATCH_SIZE: [128] # batch size of replay samples
+# ----- Example ----- #
+# <Parameter>:
+  # type: float
+  # value: 
+    # low: <float value>
+    # high: <float value>
+# <Parameter>:
+  # type: log_float
+  # value: 
+    # low: <float value>
+    # high: <float value>
+# <Parameter>:
+  # type: int
+  # value: 
+    # low: <int value>
+    # high: <int value>
+# <Parameter>:
+  # type: list
+  # value: 
+    # - <value>
+    # - <value>
+    # - ...
+
+EPS_START: # epsilon starting value
+  type: list
+  value:
+    - 0.9
+EPS_END: # endvalue of epsilon
+  type: list
+  value:
+    - 0.01
+EPS_DECAY: # steps until epsilon endvalue is reached
+  type: int
+  value:
+    low: 1000
+    high: 100000
+TAU: # soft-update rate
+  type: float
+  value:
+    high: 0.1
+    low: 0.0001
+GAMMA: # discount factor
+  type: list
+  value:
+    - 0.99
+LR: # learning rate
+  type: float
+  value:
+    high: !!float 1e-1
+    low: !!float 1e-5
+CAPACITY: # capacity of replay memory
+  type: int
+  value:
+    low: 10000
+    high: 100000
+MINI_BATCH_SIZE: # batch size of replay samples
+  type: list
+  value:
+    - 32
+    - 64
+    - 128
+    - 264

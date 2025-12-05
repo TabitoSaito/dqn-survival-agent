@@ -1,6 +1,7 @@
 import yaml
 from gymnasium.wrappers import FlattenObservation
 import gymnasium as gym
+import numpy as np
 
 from envs.gridworld import GridWorldEnv
 from networks.dqn_networks import DQN, DuelingDQN, NoisyDQN
@@ -17,25 +18,25 @@ with open("configs/agent/default.yaml") as stream:
     agent_config = yaml.safe_load(stream)
 
 
-env = gym.make("CartPole-v1", render_mode="rgb_array")
-env = FlattenObservation(env)
-
-# env = GridWorldEnv(config=env_config, size=5, render_mode="rgb_array")
+# env = gym.make("CartPole-v1", render_mode="rgb_array")
 # env = FlattenObservation(env)
-# state, info = env.reset()
 
-# num_actions = env.action_space.n
-# num_obs = len(state)
+env = GridWorldEnv(config=env_config, size=5, render_mode="rgb_array")
+env = FlattenObservation(env)
+state, info = env.reset()
 
-# agent = DQNAgent(num_actions, num_obs, config=agent_config, network=DQN)
+num_actions = env.action_space.n
+num_obs = len(state)
 
-# train_loop(agent, env, episodes=0, plot=False)
+agent = DQNAgent(num_actions, num_obs, config=agent_config, network=DQN)
+
+# train_loop(agent, env)
 
 # render_run(agent, env, "test", runs=10)
 
 # eval_agent(agent, env)
 
-with open("configs/agent/default.yaml") as stream:
+with open("configs/hyperparameter_tuning/default.yaml") as stream:
     agent_config = yaml.safe_load(stream)
 
-optimize_agent(100, )
+optimize_agent(100, agent_config, DuelingDQN, DoubleDQNAgent, env, episodes=300)

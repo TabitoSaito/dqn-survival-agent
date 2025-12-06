@@ -110,17 +110,19 @@ class GridWorldEnv(gym.Env):
         direction = self._action_to_direction[action]
         self._agent.pos = np.clip(self._agent.pos + direction, 0, self.size - 1)
 
-        reward = 0
+        reward = 1
 
         for fruit in self._fruits:
             if np.array_equal(self._agent.pos, fruit.pos):
                 amount = fruit.harvest()
                 if amount > 0:
                     self._agent.eat(amount)
-                    reward += 1
             fruit.tick()
         self._agent.tick()
 
+        if not self._agent.check_alive():
+            if self._agent.age < self._agent.max_age:
+                reward += -100
         terminated = not self._agent.check_alive()
 
         truncated = False

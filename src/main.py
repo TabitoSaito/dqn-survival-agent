@@ -28,7 +28,7 @@ state, info = env.reset()
 num_actions = env.action_space.n
 num_obs = len(state)
 
-agent = DQNAgent(num_actions, num_obs, config=agent_config, network=DQN)
+# agent = DQNAgent(num_actions, num_obs, config=agent_config, network=DQN)
 
 # train_loop(agent, env)
 

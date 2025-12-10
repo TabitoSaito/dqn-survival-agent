@@ -58,7 +58,7 @@ class GridWorldEnv(gym.Env):
         """
         return {
             "agent_pos": self._agent.pos,
-            "fruits_pos": [fruit.pos for fruit in self._fruits],
+            "fruits_pos": [self._agent.pos - fruit.pos for fruit in self._fruits],
             "fruits_status": [1 if fruit.status == FruitStatus.RIPE else 0 for fruit in self._fruits]
         }
 
@@ -117,12 +117,10 @@ class GridWorldEnv(gym.Env):
                 amount = fruit.harvest()
                 if amount > 0:
                     self._agent.eat(amount)
+                    reward += 0.5
             fruit.tick()
         self._agent.tick()
 
-        if not self._agent.check_alive():
-            if self._agent.age < self._agent.max_age:
-                reward += -100
         terminated = not self._agent.check_alive()
 
         truncated = False

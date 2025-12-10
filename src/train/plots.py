@@ -41,7 +41,7 @@ def plot_training(q1: Queue, q2: Queue, update_interval=0.01):
 
     graph31, = axs[1, 1].plot([], [], color="g")
 
-    axs[1, 1].set_xlabel("Step")
+    axs[1, 1].set_xlabel("Episode")
     axs[1, 1].set_ylabel("Epsilon")
     axs[1, 1].grid(axis = 'y')
     axs[1, 1].margins(0)
@@ -57,12 +57,13 @@ def plot_training(q1: Queue, q2: Queue, update_interval=0.01):
     try:
         while plt.fignum_exists(fig.number):
             while not q1.empty():
-                scores, best_avg_reward, q_values_mean = q1.get_nowait()
+                scores, best_avg_reward, q_values_mean, epsilon  = q1.get_nowait()
                 q_values_buffer.append(q_values_mean)
+                epsilons.append(epsilon)
 
             graph11.set_data([i for i in range(0, len(scores))], scores)
             graph12.set_ydata([best_avg_reward, best_avg_reward])
-            graph13.set_data([0] + [i for i in range(100, len(scores) + 1, 100)] + [len(scores)], [np.float64(0)] + [np.mean(scores[i - 100:i]) for i in range(100, len(scores) + 1, 100)] + [np.mean(scores[-100:])])
+            graph13.set_data([i for i in range(100, len(scores), 100)] + [len(scores)], [np.mean(scores[i - 100:i]) for i in range(100, len(scores), 100)] + [np.mean(scores[-100:])])
 
             axs[0, 0].relim()
             axs[0, 0].autoscale_view()
@@ -77,8 +78,7 @@ def plot_training(q1: Queue, q2: Queue, update_interval=0.01):
             axs[1, 0].autoscale_view()
 
             while not q2.empty():
-                epsilon, loss = q2.get_nowait()
-                epsilons.append(epsilon)
+                loss = q2.get_nowait()
                 losses.append(loss) if loss is not None else None
 
             graph21.set_data([i for i in range(0, len(losses))], losses)
@@ -93,7 +93,7 @@ def plot_training(q1: Queue, q2: Queue, update_interval=0.01):
             axs[1, 1].autoscale_view()
 
             fig.canvas.draw_idle()
-            fig.suptitle(f"Training... (Eps: {len(scores)}; Steps: {len(epsilons)})")
+            fig.suptitle(f"Training... (Eps: {len(scores)}; Steps: {len(losses)})")
             plt.pause(0.001)
 
             time.sleep(update_interval)

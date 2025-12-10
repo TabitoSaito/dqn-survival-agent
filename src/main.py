@@ -14,12 +14,9 @@ from train.hyperparameter_tuning import optimize_agent
 with open("configs/envs/default.yaml") as stream:
     env_config = yaml.safe_load(stream)
 
-with open("configs/agent/default.yaml") as stream:
+with open("configs/agent/test.yaml") as stream:
     agent_config = yaml.safe_load(stream)
 
-
-# env = gym.make("CartPole-v1", render_mode="rgb_array")
-# env = FlattenObservation(env)
 
 env = GridWorldEnv(config=env_config, size=5, render_mode="rgb_array")
 env = FlattenObservation(env)
@@ -28,7 +25,7 @@ state, info = env.reset()
 num_actions = env.action_space.n
 num_obs = len(state)
 
-# agent = DQNAgent(num_actions, num_obs, config=agent_config, network=DQN)
+# agent = DoubleDQNAgent(num_actions, num_obs, config=agent_config, network=DuelingDQN)
 
 # train_loop(agent, env)
 
@@ -39,4 +36,4 @@ num_obs = len(state)
 with open("configs/hyperparameter_tuning/default.yaml") as stream:
     agent_config = yaml.safe_load(stream)
 
-optimize_agent(100, agent_config, DuelingDQN, DoubleDQNAgent, env, episodes=300)
+optimize_agent(100, agent_config, DuelingDQN, DoubleDQNAgent, env, episodes=50)

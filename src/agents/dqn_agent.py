@@ -35,13 +35,6 @@ class DQNAgent:
 
         sample = random.random()
 
-        self.epsilon = self.config["EPS_END"] + (
-            self.config["EPS_START"] - self.config["EPS_END"]
-        ) * math.exp(-1.0 * self.steps_done / self.config["EPS_DECAY"])
-
-        if train_mode:
-            self.steps_done += 1
-
         if sample > self.epsilon or not train_mode:
             return q_values.argmax(keepdim=True), q_values
         else:
@@ -50,6 +43,13 @@ class DQNAgent:
                 device=DEVICE,
                 dtype=torch.long,
             ), q_values
+        
+    def update_epsilon(self):
+        self.epsilon = self.config["EPS_END"] + (
+            self.config["EPS_START"] - self.config["EPS_END"]
+        ) * math.exp(-1.0 * self.steps_done / self.config["EPS_DECAY"])
+
+        self.steps_done += 1
 
     def step(self, state, action, next_state, reward, done):
         self.memory.push(state, action, next_state, reward, done)
@@ -131,9 +131,6 @@ class DQNAgentPER:
         self.epsilon = self.config["EPS_END"] + (
             self.config["EPS_START"] - self.config["EPS_END"]
         ) * math.exp(-1.0 * self.steps_done / self.config["EPS_DECAY"])
-
-        if train_mode:
-            self.steps_done += 1
 
         if sample > self.epsilon or not train_mode:
             return q_values.argmax(keepdim=True), q_values
@@ -233,13 +230,6 @@ class DoubleDQNAgent:
 
         sample = random.random()
 
-        self.epsilon = self.config["EPS_END"] + (
-            self.config["EPS_START"] - self.config["EPS_END"]
-        ) * math.exp(-1.0 * self.steps_done / self.config["EPS_DECAY"])
-
-        if train_mode:
-            self.steps_done += 1
-
         if sample > self.epsilon or not train_mode:
             return q_values.argmax(keepdim=True), q_values
         else:
@@ -248,6 +238,13 @@ class DoubleDQNAgent:
                 device=DEVICE,
                 dtype=torch.long,
             ), q_values
+        
+    def update_epsilon(self):
+        self.epsilon = self.config["EPS_END"] + (
+            self.config["EPS_START"] - self.config["EPS_END"]
+        ) * math.exp(-1.0 * self.steps_done / self.config["EPS_DECAY"])
+
+        self.steps_done += 1
 
     def step(self, state, action, next_state, reward, done):
         self.memory.push(state.clone().detach(), action.clone().detach(), next_state.clone().detach(), reward.clone().detach(), done.clone().detach())

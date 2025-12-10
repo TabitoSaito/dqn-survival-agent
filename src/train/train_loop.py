@@ -7,83 +7,109 @@ from multiprocessing import Process, Queue
 from typing import Iterable, Optional
 
 
-def train_loop(agent, env, episodes=0, seeds: Optional[Iterable[int]] = None, dyn_print=True, plot=True):
-    scores = []
-    steps = []
-    best_avg_reward = -float("inf")
+class TrainLoop:
+    def __init__(self, agent, env, seeds: Optional[Iterable[int]] = None, dyn_print=True, plot=True) -> None:
+        self.agent = agent
+        self.env = env
 
-    queue1 = Queue(maxsize=1000)
-    queue2 = Queue(maxsize=1000)
+        self.dyn_print = dyn_print
+        self.plot = plot
 
-    seeds = cycle(seeds) if seeds is Iterable else None
+        self.scores = []
+        self.steps = []
+        self.best_avg_reward = -float("inf")
 
-    if plot:
-        p = Process(target=plot_training, args=(queue1, queue2,), daemon=False)
-        p.start()
+        self.queue1 = Queue(maxsize=1000)
+        self.queue2 = Queue(maxsize=1000)
 
-    try:
-        for cur_episode in count(start=1):
-            seed = next(seeds) if seeds is Iterable else None
-            state, info = env.reset(seed=seed)
-            state = torch.tensor(state, dtype=torch.float32, device=DEVICE).unsqueeze(0)
+        self.seeds = cycle(seeds) if seeds is Iterable else None
 
-            score = 0
-            q_values_buffer = []
-            q_values_mean = []
-            for t in count():
-                action, q_values = agent.act(state)
-                obs, reward, terminated, truncated, info = env.step(action.item())
+        if plot:
+            self.p = Process(target=plot_training, args=(self.queue1, self.queue2,), daemon=False)
+            self.p.start()
 
-                q_values_buffer.append(q_values)
+        self.cur_episode = 0
+        self.best_episode = 0
 
-                score += reward
-                reward = torch.tensor([reward], device=DEVICE)
-                done = terminated or truncated
-                done = torch.tensor([done], device=DEVICE, dtype=torch.float32)
+    def episode_step(self):
+        self.cur_episode += 1
 
-                next_state = torch.tensor(
-                    obs, dtype=torch.float32, device=DEVICE
-                ).unsqueeze(0)
+        seed = next(self.seeds) if self.seeds is Iterable else None
+        if seed is not None:
+            torch.manual_seed(seed)
 
-                loss = agent.step(state, action, next_state, reward, done)
+        state, info = self.env.reset(seed=seed)
+        state = torch.tensor(state, dtype=torch.float32, device=DEVICE).unsqueeze(0)
 
-                state = next_state
+        self.agent.update_epsilon()
 
-                if plot:
-                    queue2.put((agent.epsilon, loss))
+        score = 0
+        q_values_buffer = []
+        q_values_mean = []
+        for t in count():
+            action, q_values = self.agent.act(state)
+            obs, reward, terminated, truncated, info = self.env.step(action.item())
 
-                if terminated or truncated:
-                    scores.append(score)
-                    steps.append(t)
-                    q_values_buffer = torch.cat(q_values_buffer)
-                    q_values_mean = q_values_buffer.mean(dim=0).tolist()
-                    break
+            q_values_buffer.append(q_values)
 
-            if np.mean(scores[-100:]) > best_avg_reward and cur_episode > 100:
-                best_avg_reward = np.mean(scores[-100:])
+            score += reward
+            reward = torch.tensor([reward], device=DEVICE)
+            done = terminated or truncated
+            done = torch.tensor([done], device=DEVICE, dtype=torch.float32)
 
-            if dyn_print:
+            next_state = torch.tensor(
+                obs, dtype=torch.float32, device=DEVICE
+            ).unsqueeze(0)
+
+            loss = self.agent.step(state, action, next_state, reward, done)
+
+            state = next_state
+
+            if self.plot:
+                self.queue2.put((loss))
+
+            if terminated or truncated:
+                self.scores.append(score)
+                self.steps.append(t)
+                q_values_buffer = torch.cat(q_values_buffer)
+                q_values_mean = q_values_buffer.mean(dim=0).tolist()
+                break
+
+        if np.mean(self.scores[-100:]) > self.best_avg_reward and self.cur_episode > 100:
+            self.best_avg_reward = np.mean(self.scores[-100:])
+            self.best_episode = self.cur_episode
+
+        if self.dyn_print:
+            print(
+                f"\rEpisode {self.cur_episode}\t\tAverage Score: {np.mean(self.scores[-100:]):.2f}\t\tAverage steps: {np.mean(self.steps[-100:]):.2f}\t\tEpsilon: {self.agent.epsilon:.4f}",
+                end="",
+            )
+
+            if self.cur_episode % 100 == 0:
                 print(
-                    f"\rEpisode {cur_episode}\t\tAverage Score: {np.mean(scores[-100:]):.2f}\t\tAverage steps: {np.mean(steps[-100:]):.2f}\t\tEpsilon: {agent.epsilon:.4f}",
-                    end="",
+                    f"\rEpisode {self.cur_episode}\t\tAverage Score: {np.mean(self.scores[-100:]):.2f}\t\tAverage steps: {np.mean(self.steps[-100:]):.2f}\t\tEpsilon: {self.agent.epsilon:.4f}",
                 )
+        
+        if self.plot:
+            self.queue1.put((self.scores, self.best_avg_reward, q_values_mean, self.agent.epsilon))
 
-                if cur_episode % 100 == 0:
-                    print(
-                        f"\rEpisode {cur_episode}\t\tAverage Score: {np.mean(scores[-100:]):.2f}\t\tAverage steps: {np.mean(steps[-100:]):.2f}\t\tEpsilon: {agent.epsilon:.4f}",
-                    )
-            
-            if plot:
-                queue1.put((scores, best_avg_reward, q_values_mean))
+    def end_training(self):
+        if self.cur_episode % 100 != 0 and self.dyn_print:
+            print("")
 
+
+def prebuilt_train_loop(agent, env, episodes=0, seeds: Optional[Iterable[int]] = None, dyn_print=True, plot=True):
+    loop = TrainLoop(agent=agent, env=env, seeds=seeds, dyn_print=dyn_print, plot=plot)
+    try:
+        for _ in count(start=1):
+            loop.episode_step()
             if episodes == 0:
                 continue
-            if cur_episode >= episodes:
+            if loop.cur_episode >= episodes:
                 break
     except KeyboardInterrupt:
         pass
 
-    if cur_episode % 100 != 0 and dyn_print:
+    if loop.cur_episode % 100 != 0 and dyn_print:
         print("")
 
-    return np.mean(scores[-100:])

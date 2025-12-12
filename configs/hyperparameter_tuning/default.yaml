@@ -15,12 +15,39 @@
     # low: <int value>
     # high: <int value>
 # <Parameter>:
+  # type: log_int
+  # value: 
+    # low: <int value>
+    # high: <int value>
+# <Parameter>:
   # type: list
   # value: 
     # - <value>
     # - <value>
     # - ...
 
+# Architecture
+DOUBLE_DQN: 
+  type: list
+  value:
+    - true
+    - false
+PER:
+  type: list
+  value:
+    - true
+    - false
+DUELING:
+  type: list
+  value:
+    - true
+    - false
+NOISY:
+  type: list
+  value:
+    - true
+    - false
+# Hyperparameters
 EPS_START: # epsilon starting value
   type: list
   value:
@@ -61,3 +88,14 @@ MINI_BATCH_SIZE: # batch size of replay samples
     - 128
     - 264
     - 528
+# PER
+ALPHA:
+  type: float
+  value:
+    high: 1
+    low: 0
+BETA:
+  type: float
+  value:
+    high: 1
+    low: 0

@@ -1,16 +1,12 @@
 import yaml
 from gymnasium.wrappers import FlattenObservation
 import gymnasium as gym
-import numpy as np
-import torch
 
 from envs.gridworld import GridWorldEnv
-from networks.dqn_networks import DQN, DuelingDQN, NoisyDQN
-from agents.dqn_agent import DQNAgent, DoubleDQNAgent, DoubleDQNAgentPER
 from train.train_loop import TrainLoop, prebuilt_train_loop
 from train.evaluation import render_run, eval_agent
-
 from train.hyperparameter_tuning import optimize_agent
+from utils.helper import build_agent
 
 with open("configs/envs/default.yaml") as stream:
     env_config = yaml.safe_load(stream)
@@ -22,12 +18,8 @@ env = gym.make("CartPole-v1", render_mode="rgb_array")
 
 # env = GridWorldEnv(config=env_config, size=5, render_mode="rgb_array")
 env = FlattenObservation(env)
-state, info = env.reset()
 
-num_actions = env.action_space.n
-num_obs = len(state)
-
-agent = DoubleDQNAgent(num_actions, num_obs, config=agent_config, network=DQN)
+agent = build_agent(agent_config, env)
 
 prebuilt_train_loop(agent, env, save_agent="test", episodes=600)
 

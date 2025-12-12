@@ -1,3 +1,9 @@
+# Architecture
+DOUBLE_DQN: !!bool true
+PER: !!bool false
+DUELING: !!bool false
+NOISY: !!bool false
+# Hyperparameters
 EPS_START: 0.9 # epsilon starting value
 EPS_END: 0.01 # endvalue of epsilon
 EPS_DECAY: 100 # episods until epsilon endvalue is reached

@@ -6,8 +6,10 @@ import numpy as np
 import copy
 import torch
 
+from utils.helper import build_agent
 
-def objective(trial, config, network, agent, env, max_episodes: int = 2000, loops: int = 5, seeds: Optional[Iterable[int]] = None):
+
+def objective(trial, config, env, max_episodes: int = 2000, loops: int = 5, seeds: Optional[Iterable[int]] = None):
     assert max_episodes > 0, "episodes argument has to be bigger than 0"
 
     if seeds is None:
@@ -35,12 +37,7 @@ def objective(trial, config, network, agent, env, max_episodes: int = 2000, loop
     for loop_idx in range(loops):
         cur_env = copy.deepcopy(env)
 
-        state, info = env.reset()
-
-        num_actions = env.action_space.n
-        num_obs = len(state)
-
-        cur_agent = agent(num_actions, num_obs, config=converted_config, network=network)
+        cur_agent = build_agent(converted_config, env)
 
         loop = TrainLoop(cur_agent, cur_env, seeds=seeds, dyn_print=False, plot=False)
 

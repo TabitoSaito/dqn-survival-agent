@@ -17,9 +17,11 @@ class BaseAgent:
         observation_size,
         config,
         network: Callable[[int, int], nn.Module],
+        noisy = False
     ) -> None:
         self.action_size = action_size
         self.config = config
+        self.noisy = noisy
 
         self.policy_net = network(observation_size, action_size).to(DEVICE)
         self.target_net = network(observation_size, action_size).to(DEVICE)
@@ -45,7 +47,7 @@ class BaseAgent:
             self.config["EPS_START"] - self.config["EPS_END"]
         ) * math.exp(-1.0 * self.epsilon_steps / self.config["EPS_DECAY"])
 
-        if sample > self.epsilon or not train_mode:
+        if sample > self.epsilon or not train_mode or self.noisy:
             return q_values.argmax(keepdim=True), q_values
         else:
             return torch.tensor(
@@ -105,8 +107,9 @@ class DQNAgent(BaseAgent):
         observation_size,
         config,
         network: Callable[[int, int], nn.Module],
+        noisy = False
     ) -> None:
-        super().__init__(action_size, observation_size, config, network)
+        super().__init__(action_size, observation_size, config, network, noisy)
 
     def step(self, state, action, next_state, reward, done):
         self.memory.push(state, action, next_state, reward, done)
@@ -159,8 +162,9 @@ class DQNAgentPER(BaseAgent):
         observation_size,
         config,
         network: Callable[[int, int], nn.Module],
+        noisy = False
     ) -> None:
-        super().__init__(action_size, observation_size, config, network)
+        super().__init__(action_size, observation_size, config, network, noisy)
         self.memory = PERMemory(config["CAPACITY"], config["ALPHA"], config["BETA"])
 
     def step(self, state, action, next_state, reward, done):
@@ -234,8 +238,9 @@ class DoubleDQNAgent(BaseAgent):
         observation_size,
         config,
         network: Callable[[int, int], nn.Module],
+        noisy = False
     ) -> None:
-        super().__init__(action_size, observation_size, config, network)
+        super().__init__(action_size, observation_size, config, network, noisy)
 
     def step(self, state, action, next_state, reward, done):
         self.memory.push(
@@ -296,8 +301,9 @@ class DoubleDQNAgentPER(BaseAgent):
         observation_size,
         config,
         network: Callable[[int, int], nn.Module],
+        noisy = False
     ) -> None:
-        super().__init__(action_size, observation_size, config, network)
+        super().__init__(action_size, observation_size, config, network, noisy)
         self.memory = PERMemory(config["CAPACITY"], config["ALPHA"], config["BETA"])
 
     def act(self, state, train_mode=True):

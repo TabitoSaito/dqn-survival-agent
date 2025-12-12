@@ -82,6 +82,7 @@ class BaseAgent:
                     key
                 ] * tau + target_net_state_dict[key] * (1 - tau)
         elif self.update_steps >= tau:
+            tau = int(tau)
             target_net_state_dict = policy_net_state_dict
             self.update_steps = 0
         else:

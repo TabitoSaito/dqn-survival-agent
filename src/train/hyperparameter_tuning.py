@@ -1,4 +1,5 @@
 from train.train_loop import TrainLoop
+from train.evaluation import eval_agent
 import optuna
 from functools import partial
 from typing import Optional, Iterable
@@ -30,6 +31,7 @@ def objective(trial, config, env, max_episodes: int = 2000, min_episodes: int = 
                 converted_config[k] = trial.suggest_categorical(str(k), v["value"])
 
     aucs = []
+    scores = []
     train_len = []
 
     torch.manual_seed(0)
@@ -60,20 +62,26 @@ def objective(trial, config, env, max_episodes: int = 2000, min_episodes: int = 
             if prune_count >= patience:
                 break
 
+        _, eval_scores = eval_agent(cur_agent, cur_env, print_=False)
+
         auc = np.trapezoid(loop.scores) / loop.cur_episode
+        eval_scores.sort()
+        eval_score = np.median(eval_scores)
 
         aucs.append(auc)
+        scores.append(eval_score)
         train_len.append(loop.cur_episode)
         trial.set_user_attr("Episodes", train_len)
 
     aucs.sort()
+    scores.sort()
 
     trial.set_user_attr("Episodes", train_len)
 
-    return np.median(aucs)
+    return np.median(aucs), np.median(scores)
 
 def optimize_agent(n_trials: int, config, env, max_episodes: int = 2000, min_episodes: int = 2000, loops: int = 5, patience: int = 3, min_progress: float = 0.02, seeds: Optional[Iterable[int]] = None, name: Optional[str] = None):
-    study = optuna.create_study(direction="maximize", storage="sqlite:///instance/db.sqlite3", study_name=name)
+    study = optuna.create_study(directions=["maximize", "maximize"], storage="sqlite:///instance/db.sqlite3", study_name=name)
 
     par_objective = partial(objective, config=config, env=env, max_episodes=max_episodes, min_episodes=min_episodes, loops=loops, patience=patience, min_progress=min_progress, seeds=seeds)
 

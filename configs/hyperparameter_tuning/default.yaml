@@ -64,7 +64,7 @@ EPS_DECAY: # steps until epsilon endvalue is reached
 TAU: # soft-update rate
   type: log_float
   value:
-    high: !!float 1e-1
+    high: !!float 10000
     low: !!float 1e-7
 GAMMA: # discount factor
   type: list

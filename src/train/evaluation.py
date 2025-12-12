@@ -2,6 +2,7 @@ import torch
 import cv2
 from itertools import count
 from utils.constants import DEVICE
+import numpy as np
 
 
 def render_run(agent, env, run_name: str, runs: int = 10, seed=None):
@@ -47,8 +48,8 @@ def render_run(agent, env, run_name: str, runs: int = 10, seed=None):
     env.close()
 
 
-def eval_agent(agent, env, runs=1000, seed=None):
-    scores = 0
+def eval_agent(agent, env, runs=1000, seed=None, print_=True):
+    scores = []
     for i in range(runs):
         state, info = env.reset(seed=seed)
         state = torch.tensor(state, dtype=torch.float32, device=DEVICE).unsqueeze(0)
@@ -68,6 +69,10 @@ def eval_agent(agent, env, runs=1000, seed=None):
 
             if done:
                 break
-        scores += score
+        scores.append(score)
 
-    print(f"Evaluated on {runs} episodes with Avg. Reward {scores/runs:.2f}")
+    avg_score = np.mean(scores)
+
+    if print_:
+        print(f"Evaluated on {runs} episodes, with Avg. Reward {avg_score:.2f}")
+    return avg_score, scores

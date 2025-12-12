@@ -28,11 +28,15 @@ agent.policy_net.eval()
 
 render_run(agent, env, "test", runs=10)
 
-# eval_agent(agent, env)
+eval_agent(agent, env)
 
 # with open("configs/hyperparameter_tuning/default.yaml") as stream:
 #     agent_config = yaml.safe_load(stream)
 
-# optimize_agent(100, agent_config, DQN, DQNAgent, env, max_episodes=600, name="DQN")
+# optimize_agent(100, agent_config, env, max_episodes=1000, name="CartPole")
 
-# optimize_agent(100, agent_config, DQN, DoubleDQNAgent, env, max_episodes=600, name="DoubleDQN")
+# env = GridWorldEnv(config=env_config, size=5, render_mode="rgb_array")
+# env = FlattenObservation(env)
+
+# optimize_agent(100, agent_config, env, max_episodes=1000, name="Survival")
+

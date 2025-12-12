@@ -5,6 +5,7 @@ from utils.constants import DEVICE
 from train.plots import plot_training
 from multiprocessing import Process, Queue
 from typing import Iterable, Optional
+import time
 
 
 class TrainLoop:
@@ -45,6 +46,8 @@ class TrainLoop:
         score = 0
         q_values_buffer = []
         q_values_mean = []
+
+        start_time = time.time()
         for t in count():
             action, q_values = self.agent.act(state)
             obs, reward, terminated, truncated, info = self.env.step(action.item())
@@ -68,11 +71,14 @@ class TrainLoop:
                 self.queue2.put((loss))
 
             if terminated or truncated:
-                self.scores.append(score)
-                self.steps.append(t)
-                q_values_buffer = torch.cat(q_values_buffer)
-                q_values_mean = q_values_buffer.mean(dim=0).tolist()
                 break
+
+        step_duration = t / (time.time() - start_time)
+
+        self.scores.append(score)
+        self.steps.append(t)
+        q_values_buffer = torch.cat(q_values_buffer)
+        q_values_mean = q_values_buffer.mean(dim=0).tolist()
 
         if np.mean(self.scores[-100:]) > self.best_avg_reward and self.cur_episode > 100:
             self.best_avg_reward = np.mean(self.scores[-100:])
@@ -92,7 +98,7 @@ class TrainLoop:
                 )
         
         if self.plot:
-            self.queue1.put((self.scores, self.best_avg_reward, q_values_mean, self.agent.epsilon))
+            self.queue1.put((self.scores, self.best_avg_reward, q_values_mean, self.agent.epsilon, step_duration))
 
     def end_training(self):
         if self.cur_episode % 100 != 0 and self.dyn_print:

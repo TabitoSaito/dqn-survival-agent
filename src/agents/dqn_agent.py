@@ -10,8 +10,14 @@ from buffers.replay_memory import ReplayMemory, PERMemory
 from utils.constants import DEVICE, Experiences
 
 
-class DQNAgent:
-    def __init__(self, action_size, observation_size, config, network: Callable[[int, int], nn.Module]) -> None:
+class BaseAgent:
+    def __init__(
+        self,
+        action_size,
+        observation_size,
+        config,
+        network: Callable[[int, int], nn.Module],
+    ) -> None:
         self.action_size = action_size
         self.config = config
 
@@ -20,13 +26,12 @@ class DQNAgent:
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 
-        self.optimizer = optim.Adam(
-            self.policy_net.parameters(), lr=config["LR"]
-        )
+        self.optimizer = optim.Adam(self.policy_net.parameters(), lr=config["LR"])
         self.criterion = nn.SmoothL1Loss()
         self.memory = ReplayMemory(config["CAPACITY"])
 
-        self.steps_done = 0
+        self.epsilon_steps = 0
+        self.update_steps = 0
 
     def act(self, state, train_mode=True):
         self.policy_net.eval()
@@ -36,6 +41,10 @@ class DQNAgent:
 
         sample = random.random()
 
+        self.epsilon = self.config["EPS_END"] + (
+            self.config["EPS_START"] - self.config["EPS_END"]
+        ) * math.exp(-1.0 * self.epsilon_steps / self.config["EPS_DECAY"])
+
         if sample > self.epsilon or not train_mode:
             return q_values.argmax(keepdim=True), q_values
         else:
@@ -44,13 +53,60 @@ class DQNAgent:
                 device=DEVICE,
                 dtype=torch.long,
             ), q_values
-        
+
     def update_epsilon(self):
         self.epsilon = self.config["EPS_END"] + (
             self.config["EPS_START"] - self.config["EPS_END"]
-        ) * math.exp(-1.0 * self.steps_done / self.config["EPS_DECAY"])
+        ) * math.exp(-1.0 * self.epsilon_steps / self.config["EPS_DECAY"])
 
-        self.steps_done += 1
+        self.epsilon_steps += 1
+
+    def step(self, state, action, next_state, reward, done):
+        raise NotImplementedError("step method not implemented.")
+
+    def learn(self, batch):
+        raise NotImplementedError("learn method not implemented.")
+
+    def update_net(self):
+        """update target network according to tau defined in config. If tau < 1 softupdate. If tau > 1 hardupdate where tau is steps between updates."""
+        target_net_state_dict = self.target_net.state_dict()
+        policy_net_state_dict = self.policy_net.state_dict()
+
+        tau = self.config["TAU"]
+
+        if tau < 1:
+            for key in policy_net_state_dict:
+                target_net_state_dict[key] = policy_net_state_dict[
+                    key
+                ] * tau + target_net_state_dict[key] * (1 - tau)
+        elif self.update_steps >= tau:
+            target_net_state_dict = policy_net_state_dict
+            self.update_steps = 0
+        else:
+            self.update_steps += 0
+
+        self.target_net.load_state_dict(target_net_state_dict)
+
+    def save(self, name="test"):
+        torch.save(
+            self.policy_net.state_dict(), os.path.abspath(f"src/checkpoints/{name}.pt")
+        )
+
+    def load(self, name="test"):
+        self.policy_net.load_state_dict(
+            torch.load(os.path.abspath(f"src/checkpoints/{name}.pt"))
+        )
+
+
+class DQNAgent(BaseAgent):
+    def __init__(
+        self,
+        action_size,
+        observation_size,
+        config,
+        network: Callable[[int, int], nn.Module],
+    ) -> None:
+        super().__init__(action_size, observation_size, config, network)
 
     def step(self, state, action, next_state, reward, done):
         self.memory.push(state, action, next_state, reward, done)
@@ -81,7 +137,9 @@ class DQNAgent:
                 next_state_action_values * self.config["GAMMA"]
             ) * (1 - done_batch) + reward_batch
 
-        loss = self.criterion(state_action_values, expected_state_action_values.unsqueeze(1))
+        loss = self.criterion(
+            state_action_values, expected_state_action_values.unsqueeze(1)
+        )
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -93,71 +151,35 @@ class DQNAgent:
 
         return loss.item()
 
-    def update_net(self):
-        target_net_state_dict = self.target_net.state_dict()
-        policy_net_state_dict = self.policy_net.state_dict()
-        for key in policy_net_state_dict:
-            target_net_state_dict[key] = policy_net_state_dict[key] * self.config[
-                "TAU"
-            ] + target_net_state_dict[key] * (1 - self.config["TAU"])
-        self.target_net.load_state_dict(target_net_state_dict)
 
-    def save(self, name="test"):
-        torch.save(self.policy_net.state_dict(), os.path.abspath(f"src/checkpoints/{name}.pt"))
-
-    def load(self, name="test"):
-        self.policy_net.load_state_dict(torch.load(os.path.abspath(f"src/checkpoints/{name}.pt")))
-
-
-
-class DQNAgentPER:
-    def __init__(self, action_size, observation_size, config, network: Callable[[int, int], nn.Module]) -> None:
-        self.action_size = action_size
-        self.config = config
-
-        self.policy_net = network(observation_size, action_size).to(DEVICE)
-        self.target_net = network(observation_size, action_size).to(DEVICE)
-        self.target_net.load_state_dict(self.policy_net.state_dict())
-        self.target_net.eval()
-
-        self.optimizer = optim.AdamW(
-            self.policy_net.parameters(), lr=config["LR"], amsgrad=True
-        )
-        self.criterion = nn.SmoothL1Loss()
+class DQNAgentPER(BaseAgent):
+    def __init__(
+        self,
+        action_size,
+        observation_size,
+        config,
+        network: Callable[[int, int], nn.Module],
+    ) -> None:
+        super().__init__(action_size, observation_size, config, network)
         self.memory = PERMemory(config["CAPACITY"], config["ALPHA"], config["BETA"])
-
-        self.steps_done = 0
-
-    def act(self, state, train_mode=True):
-        self.policy_net.eval()
-        with torch.no_grad():
-            q_values = self.policy_net(state)
-        self.policy_net.train()
-
-        sample = random.random()
-
-        self.epsilon = self.config["EPS_END"] + (
-            self.config["EPS_START"] - self.config["EPS_END"]
-        ) * math.exp(-1.0 * self.steps_done / self.config["EPS_DECAY"])
-
-        if sample > self.epsilon or not train_mode:
-            return q_values.argmax(keepdim=True), q_values
-        else:
-            return torch.tensor(
-                [random.sample([i for i in range(self.action_size)], 1)],
-                device=DEVICE,
-                dtype=torch.long,
-            ), q_values
 
     def step(self, state, action, next_state, reward, done):
         with torch.no_grad():
             state_action_value = self.policy_net(state)[0, action].to(DEVICE)
             next_state_action_value = self.target_net(next_state).max(1)[0].item()
-            td_error = reward + self.config["GAMMA"] * next_state_action_value * (1 - done) - state_action_value
+            td_error = (
+                reward
+                + self.config["GAMMA"] * next_state_action_value * (1 - done)
+                - state_action_value
+            )
 
-        self.memory.push(state, action, next_state, reward, done, td_error=td_error.item())
+        self.memory.push(
+            state, action, next_state, reward, done, td_error=td_error.item()
+        )
         if len(self.memory) > self.config["MINI_BATCH_SIZE"]:
-            experiences, indices, weights = self.memory.sample(self.config["MINI_BATCH_SIZE"])
+            experiences, indices, weights = self.memory.sample(
+                self.config["MINI_BATCH_SIZE"]
+            )
             batch = Experiences(*zip(*experiences))
             return self.learn(batch, indices, weights)
 
@@ -186,7 +208,10 @@ class DQNAgentPER:
         expected_state_action_values = expected_state_action_values.unsqueeze(1)
 
         td_errors = expected_state_action_values.detach() - state_action_values
-        losses = self.criterion(state_action_values, expected_state_action_values.detach()) * weights
+        losses = (
+            self.criterion(state_action_values, expected_state_action_values.detach())
+            * weights
+        )
         loss = losses.mean()
 
         self.memory.update_priorities(indices, td_errors.detach().cpu().numpy())
@@ -201,61 +226,25 @@ class DQNAgentPER:
 
         return loss.item()
 
-    def update_net(self):
-        target_net_state_dict = self.target_net.state_dict()
-        policy_net_state_dict = self.policy_net.state_dict()
-        for key in policy_net_state_dict:
-            target_net_state_dict[key] = policy_net_state_dict[key] * self.config[
-                "TAU"
-            ] + target_net_state_dict[key] * (1 - self.config["TAU"])
-        self.target_net.load_state_dict(target_net_state_dict)
 
-
-
-class DoubleDQNAgent:
-    def __init__(self, action_size, observation_size, config, network: Callable[[int, int], nn.Module]) -> None:
-        self.action_size = action_size
-        self.config = config
-
-        self.policy_net = network(observation_size, action_size).to(DEVICE)
-        self.target_net = network(observation_size, action_size).to(DEVICE)
-        self.target_net.load_state_dict(self.policy_net.state_dict())
-        self.target_net.eval()
-
-        self.optimizer = optim.Adam(
-            self.policy_net.parameters(), lr=config["LR"]
-        )
-        self.criterion = nn.SmoothL1Loss()
-        self.memory = ReplayMemory(config["CAPACITY"])
-
-        self.steps_done = 0
-
-    def act(self, state, train_mode=True):
-        self.policy_net.eval()
-        with torch.no_grad():
-            q_values = self.policy_net(state)
-        self.policy_net.train()
-
-        sample = random.random()
-
-        if sample > self.epsilon or not train_mode:
-            return q_values.argmax(keepdim=True), q_values
-        else:
-            return torch.tensor(
-                [random.sample([i for i in range(self.action_size)], 1)],
-                device=DEVICE,
-                dtype=torch.long,
-            ), q_values
-        
-    def update_epsilon(self):
-        self.epsilon = self.config["EPS_END"] + (
-            self.config["EPS_START"] - self.config["EPS_END"]
-        ) * math.exp(-1.0 * self.steps_done / self.config["EPS_DECAY"])
-
-        self.steps_done += 1
+class DoubleDQNAgent(BaseAgent):
+    def __init__(
+        self,
+        action_size,
+        observation_size,
+        config,
+        network: Callable[[int, int], nn.Module],
+    ) -> None:
+        super().__init__(action_size, observation_size, config, network)
 
     def step(self, state, action, next_state, reward, done):
-        self.memory.push(state.clone().detach(), action.clone().detach(), next_state.clone().detach(), reward.clone().detach(), done.clone().detach())
+        self.memory.push(
+            state.clone().detach(),
+            action.clone().detach(),
+            next_state.clone().detach(),
+            reward.clone().detach(),
+            done.clone().detach(),
+        )
         if len(self.memory) > self.config["MINI_BATCH_SIZE"]:
             experiences = self.memory.sample(self.config["MINI_BATCH_SIZE"])
             batch = Experiences(*zip(*experiences))
@@ -278,13 +267,17 @@ class DoubleDQNAgent:
 
         with torch.no_grad():
             next_actions = self.policy_net(next_state_batch).argmax(1, keepdim=True)
-            next_state_action_values = self.target_net(next_state_batch).gather(1, next_actions).squeeze(1)
+            next_state_action_values = (
+                self.target_net(next_state_batch).gather(1, next_actions).squeeze(1)
+            )
 
             expected_state_action_values = (
                 next_state_action_values * self.config["GAMMA"]
             ) * (1 - done_batch) + reward_batch
 
-        loss = self.criterion(state_action_values, expected_state_action_values.unsqueeze(1))
+        loss = self.criterion(
+            state_action_values, expected_state_action_values.unsqueeze(1)
+        )
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -295,39 +288,17 @@ class DoubleDQNAgent:
         self.update_net()
         return loss.item()
 
-    def update_net(self):
-        target_net_state_dict = self.target_net.state_dict()
-        policy_net_state_dict = self.policy_net.state_dict()
-        for key in policy_net_state_dict:
-            target_net_state_dict[key] = policy_net_state_dict[key] * self.config[
-                "TAU"
-            ] + target_net_state_dict[key] * (1 - self.config["TAU"])
-        self.target_net.load_state_dict(target_net_state_dict)
 
-    def save(self, name="test"):
-        torch.save(self.policy_net.state_dict(), os.path.abspath(f"src/checkpoints/{name}.pt"))
-
-    def load(self, name="test"):
-        self.policy_net.load_state_dict(torch.load(os.path.abspath(f"src/checkpoints/{name}.pt")))
-
-
-class DoubleDQNAgentPER:
-    def __init__(self, action_size, observation_size, config, network: Callable[[int, int], nn.Module]) -> None:
-        self.action_size = action_size
-        self.config = config
-
-        self.policy_net = network(observation_size, action_size).to(DEVICE)
-        self.target_net = network(observation_size, action_size).to(DEVICE)
-        self.target_net.load_state_dict(self.policy_net.state_dict())
-        self.target_net.eval()
-
-        self.optimizer = optim.AdamW(
-            self.policy_net.parameters(), lr=config["LR"], amsgrad=True
-        )
-        self.criterion = nn.SmoothL1Loss()
+class DoubleDQNAgentPER(BaseAgent):
+    def __init__(
+        self,
+        action_size,
+        observation_size,
+        config,
+        network: Callable[[int, int], nn.Module],
+    ) -> None:
+        super().__init__(action_size, observation_size, config, network)
         self.memory = PERMemory(config["CAPACITY"], config["ALPHA"], config["BETA"])
-
-        self.steps_done = 0
 
     def act(self, state, train_mode=True):
         self.policy_net.eval()
@@ -353,18 +324,6 @@ class DoubleDQNAgentPER:
                 dtype=torch.long,
             ), q_values
 
-    def step(self, state, action, next_state, reward, done):
-        with torch.no_grad():
-            state_action_value = self.policy_net(state)[0, action].to(DEVICE)
-            next_state_action_value = self.target_net(next_state).max(1)[0].item()
-            td_error = reward + self.config["GAMMA"] * next_state_action_value * (1 - done) - state_action_value
-
-        self.memory.push(state, action, next_state, reward, done, td_error=td_error.item())
-        if len(self.memory) > self.config["MINI_BATCH_SIZE"]:
-            experiences, indices, weights = self.memory.sample(self.config["MINI_BATCH_SIZE"])
-            batch = Experiences(*zip(*experiences))
-            return self.learn(batch, indices, weights)
-
     def learn(self, batch, indices, weights):
         state_batch = torch.cat(batch.state)
         next_state_batch = torch.cat(batch.next_state)
@@ -382,7 +341,9 @@ class DoubleDQNAgentPER:
 
         with torch.no_grad():
             next_actions = self.policy_net(next_state_batch).argmax(1, keepdim=True)
-            next_state_action_values = self.target_net(next_state_batch).gather(1, next_actions).squeeze(1)
+            next_state_action_values = (
+                self.target_net(next_state_batch).gather(1, next_actions).squeeze(1)
+            )
 
             expected_state_action_values = (
                 next_state_action_values * self.config["GAMMA"]
@@ -391,7 +352,10 @@ class DoubleDQNAgentPER:
         expected_state_action_values = expected_state_action_values.unsqueeze(1)
 
         td_errors = expected_state_action_values.detach() - state_action_values
-        losses = self.criterion(state_action_values, expected_state_action_values.detach()) * weights
+        losses = (
+            self.criterion(state_action_values, expected_state_action_values.detach())
+            * weights
+        )
         loss = losses.mean()
 
         self.memory.update_priorities(indices, td_errors.detach().cpu().numpy())
@@ -405,12 +369,3 @@ class DoubleDQNAgentPER:
         self.update_net()
 
         return loss.item()
-
-    def update_net(self):
-        target_net_state_dict = self.target_net.state_dict()
-        policy_net_state_dict = self.policy_net.state_dict()
-        for key in policy_net_state_dict:
-            target_net_state_dict[key] = policy_net_state_dict[key] * self.config[
-                "TAU"
-            ] + target_net_state_dict[key] * (1 - self.config["TAU"])
-        self.target_net.load_state_dict(target_net_state_dict)

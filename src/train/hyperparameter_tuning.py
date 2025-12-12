@@ -17,7 +17,11 @@ def objective(trial, config, env, max_episodes: int = 2000, min_episodes: int = 
         seeds = [i for i in range(10)]
 
     converted_config = {}
+    buffer_dict = {}
     for k, v in config.items():
+        if str(v["condition"]) != "None":
+            buffer_dict[k] = v
+            continue
         match str(v["type"]).lower():
             case "float":
                 converted_config[k] = trial.suggest_float(str(k), v["value"]["low"], v["value"]["high"])
@@ -29,6 +33,21 @@ def objective(trial, config, env, max_episodes: int = 2000, min_episodes: int = 
                 converted_config[k] = trial.suggest_int(str(k), v["value"]["low"], v["value"]["high"], log=True)
             case "list":
                 converted_config[k] = trial.suggest_categorical(str(k), v["value"])
+
+    for k, v in buffer_dict.items():
+        condition = v["condition"]
+        if converted_config[condition]["value"] is True:
+            match str(v["type"]).lower():
+                case "float":
+                    converted_config[k] = trial.suggest_float(str(k), v["value"]["low"], v["value"]["high"])
+                case "log_float":
+                    converted_config[k] = trial.suggest_float(str(k), v["value"]["low"], v["value"]["high"], log=True)
+                case "int":
+                    converted_config[k] = trial.suggest_int(str(k), v["value"]["low"], v["value"]["high"])
+                case "log_int":
+                    converted_config[k] = trial.suggest_int(str(k), v["value"]["low"], v["value"]["high"], log=True)
+                case "list":
+                    converted_config[k] = trial.suggest_categorical(str(k), v["value"])
 
     aucs = []
     scores = []
@@ -62,7 +81,7 @@ def objective(trial, config, env, max_episodes: int = 2000, min_episodes: int = 
             if prune_count >= patience:
                 break
 
-        _, eval_scores = eval_agent(cur_agent, cur_env, print_=False)
+        _, eval_scores = eval_agent(cur_agent, cur_env, runs=200, print_=False)
 
         auc = np.trapezoid(loop.scores) / loop.cur_episode
         eval_scores.sort()
@@ -80,7 +99,7 @@ def objective(trial, config, env, max_episodes: int = 2000, min_episodes: int = 
 
     return np.median(aucs), np.median(scores)
 
-def optimize_agent(n_trials: int, config, env, max_episodes: int = 2000, min_episodes: int = 2000, loops: int = 5, patience: int = 3, min_progress: float = 0.02, seeds: Optional[Iterable[int]] = None, name: Optional[str] = None):
+def optimize_agent(n_trials: int, config, env, max_episodes: int = 2000, min_episodes: int = 200, loops: int = 5, patience: int = 3, min_progress: float = 0.02, seeds: Optional[Iterable[int]] = None, name: Optional[str] = None):
     study = optuna.create_study(directions=["maximize", "maximize"], storage="sqlite:///instance/db.sqlite3", study_name=name)
 
     par_objective = partial(objective, config=config, env=env, max_episodes=max_episodes, min_episodes=min_episodes, loops=loops, patience=patience, min_progress=min_progress, seeds=seeds)

@@ -307,29 +307,17 @@ class DoubleDQNAgentPER(BaseAgent):
         super().__init__(action_size, observation_size, config, network, noisy)
         self.memory = PERMemory(config["CAPACITY"], config["ALPHA"], config["BETA"])
 
-    def act(self, state, train_mode=True):
-        self.policy_net.eval()
+    def step(self, state, action, next_state, reward, done):
         with torch.no_grad():
-            q_values = self.policy_net(state)
-        self.policy_net.train()
+            state_action_value = self.policy_net(state)[0, action].to(DEVICE)
+            next_state_action_value = self.target_net(next_state).max(1)[0].item()
+            td_error = reward + self.config["GAMMA"] * next_state_action_value * (1 - done) - state_action_value
 
-        sample = random.random()
-
-        self.epsilon = self.config["EPS_END"] + (
-            self.config["EPS_START"] - self.config["EPS_END"]
-        ) * math.exp(-1.0 * self.steps_done / self.config["EPS_DECAY"])
-
-        if train_mode:
-            self.steps_done += 1
-
-        if sample > self.epsilon or not train_mode:
-            return q_values.argmax(keepdim=True), q_values
-        else:
-            return torch.tensor(
-                [random.sample([i for i in range(self.action_size)], 1)],
-                device=DEVICE,
-                dtype=torch.long,
-            ), q_values
+        self.memory.push(state, action, next_state, reward, done, td_error=td_error.item())
+        if len(self.memory) > self.config["MINI_BATCH_SIZE"]:
+            experiences, indices, weights = self.memory.sample(self.config["MINI_BATCH_SIZE"])
+            batch = Experiences(*zip(*experiences))
+            return self.learn(batch, indices, weights)
 
     def learn(self, batch, indices, weights):
         state_batch = torch.cat(batch.state)

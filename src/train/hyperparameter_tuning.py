@@ -9,7 +9,7 @@ import torch
 from utils.helper import build_agent
 
 
-def objective(trial, config, env, max_episodes: int = 2000, loops: int = 5, seeds: Optional[Iterable[int]] = None):
+def objective(trial, config, env, max_episodes: int = 2000, min_episodes: int = 2000, loops: int = 5, patience: int = 3, min_progress: float = 0.02, seeds: Optional[Iterable[int]] = None):
     assert max_episodes > 0, "episodes argument has to be bigger than 0"
 
     if seeds is None:
@@ -47,15 +47,17 @@ def objective(trial, config, env, max_episodes: int = 2000, loops: int = 5, seed
 
             if loop.cur_episode < 200:
                 continue
+            if loop.cur_episode < min_episodes:
+                continue
             if loop.cur_episode % 50 != 0:
                 continue
             
-            if (np.mean(loop.scores[-200: -100]) - np.mean(loop.scores[-100:])) / np.mean(loop.scores[-200: -100]) < 0.02:
+            if (np.mean(loop.scores[-200: -100]) - np.mean(loop.scores[-100:])) / np.mean(loop.scores[-200: -100]) < min_progress:
                 prune_count += 1
             else:
                 prune_count = 0
 
-            if prune_count >= 3:
+            if prune_count >= patience:
                 break
 
         auc = np.trapezoid(loop.scores) / loop.cur_episode
@@ -70,10 +72,10 @@ def objective(trial, config, env, max_episodes: int = 2000, loops: int = 5, seed
 
     return np.median(aucs)
 
-def optimize_agent(n_trials: int, config, network, agent, env, max_episodes: int = 2000, loops: int = 5, seeds: Optional[Iterable[int]] = None, name: Optional[str] = None):
+def optimize_agent(n_trials: int, config, env, max_episodes: int = 2000, min_episodes: int = 2000, loops: int = 5, patience: int = 3, min_progress: float = 0.02, seeds: Optional[Iterable[int]] = None, name: Optional[str] = None):
     study = optuna.create_study(direction="maximize", storage="sqlite:///instance/db.sqlite3", study_name=name)
 
-    par_objective = partial(objective, config=config, network=network, agent=agent, env=env, max_episodes=max_episodes, loops=loops, seeds=seeds)
+    par_objective = partial(objective, config=config, env=env, max_episodes=max_episodes, min_episodes=min_episodes, loops=loops, patience=patience, min_progress=min_progress, seeds=seeds)
 
     study.optimize(par_objective, n_trials=n_trials, show_progress_bar=True)
     

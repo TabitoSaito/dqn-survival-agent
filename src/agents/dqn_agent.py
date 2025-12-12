@@ -90,16 +90,6 @@ class BaseAgent:
 
         self.target_net.load_state_dict(target_net_state_dict)
 
-    def save(self, name="test"):
-        torch.save(
-            self.policy_net.state_dict(), os.path.abspath(f"src/checkpoints/{name}.pt")
-        )
-
-    def load(self, name="test"):
-        self.policy_net.load_state_dict(
-            torch.load(os.path.abspath(f"src/checkpoints/{name}.pt"))
-        )
-
 
 class DQNAgent(BaseAgent):
     def __init__(

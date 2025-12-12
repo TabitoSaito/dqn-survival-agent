@@ -55,10 +55,15 @@ def objective(trial, config, env, max_episodes: int = 2000, min_episodes: int = 
 
     torch.manual_seed(0)
 
+    state, info = env.reset()
+
+    num_actions = env.action_space.n
+    num_obs = len(state)
+
     for loop_idx in range(loops):
         cur_env = copy.deepcopy(env)
 
-        cur_agent = build_agent(converted_config, env)
+        cur_agent = build_agent(converted_config, num_actions, num_obs)
 
         loop = TrainLoop(cur_agent, cur_env, seeds=seeds, dyn_print=False, plot=False)
 

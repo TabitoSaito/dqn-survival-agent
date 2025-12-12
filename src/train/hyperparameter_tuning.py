@@ -4,9 +4,10 @@ from functools import partial
 from typing import Optional, Iterable
 import numpy as np
 import copy
+import torch
 
 
-def objective(trial, config, network, agent, env, max_episodes: int = 2000, loops: int = 10, seeds: Optional[Iterable[int]] = None):
+def objective(trial, config, network, agent, env, max_episodes: int = 2000, loops: int = 5, seeds: Optional[Iterable[int]] = None):
     assert max_episodes > 0, "episodes argument has to be bigger than 0"
 
     if seeds is None:
@@ -21,12 +22,16 @@ def objective(trial, config, network, agent, env, max_episodes: int = 2000, loop
                 converted_config[k] = trial.suggest_float(str(k), v["value"]["low"], v["value"]["high"], log=True)
             case "int":
                 converted_config[k] = trial.suggest_int(str(k), v["value"]["low"], v["value"]["high"])
+            case "log_int":
+                converted_config[k] = trial.suggest_int(str(k), v["value"]["low"], v["value"]["high"], log=True)
             case "list":
                 converted_config[k] = trial.suggest_categorical(str(k), v["value"])
 
-    scores = []
     aucs = []
     train_len = []
+
+    torch.manual_seed(0)
+
     for loop_idx in range(loops):
         cur_env = copy.deepcopy(env)
 
@@ -38,29 +43,38 @@ def objective(trial, config, network, agent, env, max_episodes: int = 2000, loop
         cur_agent = agent(num_actions, num_obs, config=converted_config, network=network)
 
         loop = TrainLoop(cur_agent, cur_env, seeds=seeds, dyn_print=False, plot=False)
+
+        prune_count = 0
         while loop.cur_episode < max_episodes:
             loop.episode_step()
-            if loop.cur_episode - loop.best_episode > 200:
-                break
-        
-        trial.set_user_attr("Episodes", loop.cur_episode)
 
-        score = np.mean(loop.scores[-100:])
+            if loop.cur_episode < 200:
+                continue
+            if loop.cur_episode % 50 != 0:
+                continue
+            
+            if (np.mean(loop.scores[-200: -100]) - np.mean(loop.scores[-100:])) / np.mean(loop.scores[-200: -100]) < 0.02:
+                prune_count += 1
+            else:
+                prune_count = 0
+
+            if prune_count >= 3:
+                break
+
         auc = np.trapezoid(loop.scores) / loop.cur_episode
 
-        scores.append(score)
         aucs.append(auc)
         train_len.append(loop.cur_episode)
+        trial.set_user_attr("Episodes", train_len)
 
-    scores.sort()
     aucs.sort()
 
-    trial.set_user_attr("Episodes", np.mean(train_len))
+    trial.set_user_attr("Episodes", train_len)
 
-    return np.median(scores), np.median(aucs)
+    return np.median(aucs)
 
-def optimize_agent(n_trials: int, config, network, agent, env, max_episodes: int = 2000, loops: int = 5, seeds: Optional[Iterable[int]] = None):
-    study = optuna.create_study(directions=["maximize", "maximize"], storage="sqlite:///instance/db.sqlite3")
+def optimize_agent(n_trials: int, config, network, agent, env, max_episodes: int = 2000, loops: int = 5, seeds: Optional[Iterable[int]] = None, name: Optional[str] = None):
+    study = optuna.create_study(direction="maximize", storage="sqlite:///instance/db.sqlite3", study_name=name)
 
     par_objective = partial(objective, config=config, network=network, agent=agent, env=env, max_episodes=max_episodes, loops=loops, seeds=seeds)
 

@@ -30,12 +30,12 @@ EPS_END: # endvalue of epsilon
   value:
     - 0.01
 EPS_DECAY: # steps until epsilon endvalue is reached
-  type: int
+  type: log_int
   value:
     low: 100
-    high: 10000
+    high: 50000
 TAU: # soft-update rate
-  type: float
+  type: log_float
   value:
     high: !!float 1e-1
     low: !!float 1e-7
@@ -44,15 +44,15 @@ GAMMA: # discount factor
   value:
     - 0.99
 LR: # learning rate
-  type: float
+  type: log_float
   value:
     high: !!float 1e-1
     low: !!float 1e-7
 CAPACITY: # capacity of replay memory
-  type: int
+  type: log_int
   value:
-    low: 1000
-    high: 100000
+    low: 10000
+    high: 1000000
 MINI_BATCH_SIZE: # batch size of replay samples
   type: list
   value:

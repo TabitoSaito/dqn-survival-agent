@@ -4,6 +4,7 @@ import torch.optim as optim
 import random
 import math
 from typing import Callable
+import os
 
 from buffers.replay_memory import ReplayMemory, PERMemory
 from utils.constants import DEVICE, Experiences
@@ -19,8 +20,8 @@ class DQNAgent:
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 
-        self.optimizer = optim.AdamW(
-            self.policy_net.parameters(), lr=config["LR"], amsgrad=True
+        self.optimizer = optim.Adam(
+            self.policy_net.parameters(), lr=config["LR"]
         )
         self.criterion = nn.SmoothL1Loss()
         self.memory = ReplayMemory(config["CAPACITY"])
@@ -100,6 +101,13 @@ class DQNAgent:
                 "TAU"
             ] + target_net_state_dict[key] * (1 - self.config["TAU"])
         self.target_net.load_state_dict(target_net_state_dict)
+
+    def save(self, name="test"):
+        torch.save(self.policy_net.state_dict(), os.path.abspath(f"src/checkpoints/{name}.pt"))
+
+    def load(self, name="test"):
+        self.policy_net.load_state_dict(torch.load(os.path.abspath(f"src/checkpoints/{name}.pt")))
+
 
 
 class DQNAgentPER:
@@ -295,6 +303,12 @@ class DoubleDQNAgent:
                 "TAU"
             ] + target_net_state_dict[key] * (1 - self.config["TAU"])
         self.target_net.load_state_dict(target_net_state_dict)
+
+    def save(self, name="test"):
+        torch.save(self.policy_net.state_dict(), os.path.abspath(f"src/checkpoints/{name}.pt"))
+
+    def load(self, name="test"):
+        self.policy_net.load_state_dict(torch.load(os.path.abspath(f"src/checkpoints/{name}.pt")))
 
 
 class DoubleDQNAgentPER:

@@ -8,7 +8,7 @@ from typing import Iterable, Optional
 
 
 class TrainLoop:
-    def __init__(self, agent, env, seeds: Optional[Iterable[int]] = None, dyn_print=True, plot=True) -> None:
+    def __init__(self, agent, env, seeds: Optional[Iterable[int]] = None, dyn_print=True, plot=True, save_agent: Optional[str] = None) -> None:
         self.agent = agent
         self.env = env
 
@@ -23,6 +23,7 @@ class TrainLoop:
         self.queue2 = Queue(maxsize=1000)
 
         self.seeds = cycle(seeds) if seeds is Iterable else None
+        self.save_agent = save_agent
 
         if plot:
             self.p = Process(target=plot_training, args=(self.queue1, self.queue2,), daemon=False)
@@ -35,8 +36,6 @@ class TrainLoop:
         self.cur_episode += 1
 
         seed = next(self.seeds) if self.seeds is Iterable else None
-        if seed is not None:
-            torch.manual_seed(seed)
 
         state, info = self.env.reset(seed=seed)
         state = torch.tensor(state, dtype=torch.float32, device=DEVICE).unsqueeze(0)
@@ -78,6 +77,8 @@ class TrainLoop:
         if np.mean(self.scores[-100:]) > self.best_avg_reward and self.cur_episode > 100:
             self.best_avg_reward = np.mean(self.scores[-100:])
             self.best_episode = self.cur_episode
+            if self.save_agent is not None:
+                self.agent.save(self.save_agent)
 
         if self.dyn_print:
             print(
@@ -98,8 +99,8 @@ class TrainLoop:
             print("")
 
 
-def prebuilt_train_loop(agent, env, episodes=0, seeds: Optional[Iterable[int]] = None, dyn_print=True, plot=True):
-    loop = TrainLoop(agent=agent, env=env, seeds=seeds, dyn_print=dyn_print, plot=plot)
+def prebuilt_train_loop(agent, env, episodes=0, seeds: Optional[Iterable[int]] = None, dyn_print=True, plot=True, save_agent: Optional[str] = None):
+    loop = TrainLoop(agent=agent, env=env, seeds=seeds, dyn_print=dyn_print, plot=plot, save_agent=save_agent)
     try:
         for _ in count(start=1):
             loop.episode_step()

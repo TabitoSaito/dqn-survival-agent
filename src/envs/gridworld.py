@@ -15,7 +15,7 @@ class GridWorldEnv(gym.Env):
         self.config = config
         self.size = size
         self.window_size = 512
-        self._num_fruits = 4
+        self._num_fruits = 5
 
         self._agent = Human(np.array([-1, -1], dtype=int))
         self._fruits = [
@@ -58,8 +58,9 @@ class GridWorldEnv(gym.Env):
         """
         return {
             "agent_pos": self._agent.pos,
+            "agent_food": self._agent.food,
             "fruits_pos": [self._agent.pos - fruit.pos for fruit in self._fruits],
-            "fruits_status": [1 if fruit.status == FruitStatus.RIPE else 0 for fruit in self._fruits]
+            "fruits_status": [fruit.time_until_reg for fruit in self._fruits]
         }
 
     def _get_info(self) -> dict:

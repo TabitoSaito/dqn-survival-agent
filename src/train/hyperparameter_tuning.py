@@ -35,8 +35,7 @@ def objective(trial, config, env, max_episodes: int = 2000, min_episodes: int = 
                 converted_config[k] = trial.suggest_categorical(str(k), v["value"])
 
     for k, v in buffer_dict.items():
-        condition = v["condition"]
-        if converted_config[condition]["value"] is True:
+        if converted_config[v["condition"]] is True:
             match str(v["type"]).lower():
                 case "float":
                     converted_config[k] = trial.suggest_float(str(k), v["value"]["low"], v["value"]["high"])
@@ -86,11 +85,9 @@ def objective(trial, config, env, max_episodes: int = 2000, min_episodes: int = 
             if prune_count >= patience:
                 break
 
-        _, eval_scores = eval_agent(cur_agent, cur_env, runs=200, print_=False)
+        eval_score, _ = eval_agent(cur_agent, cur_env, runs=200, print_=False)
 
         auc = np.trapezoid(loop.scores) / loop.cur_episode
-        eval_scores.sort()
-        eval_score = np.median(eval_scores)
 
         aucs.append(auc)
         scores.append(eval_score)

@@ -49,11 +49,11 @@ def render_run(agent, env, run_name: str, runs: int = 10, seed=None):
     env.close()
 
 
-def eval_agent(agent, env, runs=1000, seed=None, print_=True):
+def eval_agent(agent, env, runs=1000, print_=True):
     scores = []
     agent.policy_net.eval()
     for i in range(runs):
-        state, info = env.reset(seed=seed)
+        state, info = env.reset(seed=i)
         state = torch.tensor(state, dtype=torch.float32, device=DEVICE).unsqueeze(0)
 
         score = 0

@@ -28,21 +28,25 @@
 
 # Architecture
 DOUBLE_DQN: 
+  condition: None
   type: list
   value:
     - true
     - false
 PER:
+  condition: None
   type: list
   value:
     - true
     - false
 DUELING:
+  condition: None
   type: list
   value:
     - true
     - false
 NOISY:
+  condition: None
   type: list
   value:
     - true

@@ -39,7 +39,7 @@ def build_agent(config, num_actions, num_obs) -> BaseAgent:
     return agent
 
 def load_agent(name):
-    content = torch.load(os.path.abspath(f"src/checkpoints/{name}.pt"))
+    content = torch.load(os.path.abspath(f"src/checkpoints/{name}.pt"), weights_only=False)
     agent = build_agent(content["config"], content["num_actions"], content["num_obs"])
     agent.policy_net.load_state_dict(content["policy_dict"])
 

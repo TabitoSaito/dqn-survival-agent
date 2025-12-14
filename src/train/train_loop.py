@@ -6,10 +6,14 @@ from train.plots import plot_training
 from multiprocessing import Process, Queue
 from typing import Iterable, Optional
 import time
+from utils.helper import build_agent, save_agent
+import copy
+from train.evaluation import eval_agent
+from tqdm import tqdm
 
 
 class TrainLoop:
-    def __init__(self, agent, env, seeds: Optional[Iterable[int]] = None, dyn_print=True, plot=True, save_agent: Optional[str] = None) -> None:
+    def __init__(self, agent, env, seeds: Optional[Iterable[int]] = None, dyn_print=True, plot=True) -> None:
         self.agent = agent
         self.env = env
 
@@ -24,7 +28,6 @@ class TrainLoop:
         self.queue2 = Queue(maxsize=1000)
 
         self.seeds = cycle(seeds) if seeds is Iterable else None
-        self.save_agent = save_agent
 
         if plot:
             self.p = Process(target=plot_training, args=(self.queue1, self.queue2,), daemon=False)
@@ -83,8 +86,6 @@ class TrainLoop:
         if np.mean(self.scores[-100:]) > self.best_avg_reward and self.cur_episode > 100:
             self.best_avg_reward = np.mean(self.scores[-100:])
             self.best_episode = self.cur_episode
-            if self.save_agent is not None:
-                self.agent.save(self.save_agent)
 
         if self.dyn_print:
             print(
@@ -105,8 +106,8 @@ class TrainLoop:
             print("")
 
 
-def prebuilt_train_loop(agent, env, episodes=0, seeds: Optional[Iterable[int]] = None, dyn_print=True, plot=True, save_agent: Optional[str] = None):
-    loop = TrainLoop(agent=agent, env=env, seeds=seeds, dyn_print=dyn_print, plot=plot, save_agent=save_agent)
+def prebuilt_train_loop(agent, env, episodes=0, seeds: Optional[Iterable[int]] = None, dyn_print=True, plot=True):
+    loop = TrainLoop(agent=agent, env=env, seeds=seeds, dyn_print=dyn_print, plot=plot)
     try:
         for _ in count(start=1):
             loop.episode_step()
@@ -120,3 +121,76 @@ def prebuilt_train_loop(agent, env, episodes=0, seeds: Optional[Iterable[int]] =
     if loop.cur_episode % 100 != 0 and dyn_print:
         print("")
 
+
+def train_best_agent(agent_config, env, name, loops=10, max_episodes=0, min_episodes=200, patience=3, min_progress=0.02):
+    policy_state_dicts = []
+
+    state, info = env.reset()
+
+    num_actions = env.action_space.n
+    num_obs = len(state)
+
+    for loop_idx in range(loops):
+        cur_env = copy.deepcopy(env)
+
+        cur_agent = build_agent(agent_config, num_actions, num_obs)
+
+        loop = TrainLoop(cur_agent, cur_env, dyn_print=False, plot=False)
+
+        prune_count = 0
+        while loop.cur_episode <= max_episodes or max_episodes == 0:
+            print(f"\rloop: {loop_idx + 1}/{loops}\t\tcur episode: {loop.cur_episode}/{max_episodes}", end="")
+            loop.episode_step()
+
+            if loop.cur_episode % 50 == 0:
+                policy_state_dicts.append(copy.deepcopy(loop.agent.policy_net.state_dict()))
+
+            if loop.cur_episode < 200:
+                continue
+            if loop.cur_episode < min_episodes:
+                continue
+            if loop.cur_episode % 50 != 0:
+                continue
+
+            if (np.mean(loop.scores[-200: -100]) - np.mean(loop.scores[-100:])) / np.mean(loop.scores[-200: -100]) < min_progress:
+                prune_count += 1
+            else:
+                prune_count = 0
+
+            if prune_count >= patience:
+                break
+        print()
+
+    eval_state_dict = []
+    for state_dict in tqdm(policy_state_dicts, desc="evaluating agents"):
+        cur_agent = build_agent(agent_config, num_actions, num_obs)
+        cur_agent.policy_net.load_state_dict(state_dict)
+
+        cur_env = copy.deepcopy(env)
+
+        score, _ = eval_agent(cur_agent, cur_env, runs=100, print_=False)
+        eval_state_dict.append((score, state_dict))
+
+    eval_state_dict.sort(key=lambda x: x[0])
+    eval_state_dict = eval_state_dict[-10:]
+
+    best = None
+    best_score = -1e9
+    for _, state_dict in tqdm(eval_state_dict, desc="evaluating top 10"):
+        cur_agent = build_agent(agent_config, num_actions, num_obs)
+        cur_agent.policy_net.load_state_dict(state_dict)
+
+        cur_env = copy.deepcopy(env)
+
+        score, _ = eval_agent(cur_agent, cur_env, runs=1000, print_=False)
+
+        if score > best_score:
+            best = state_dict
+            best_score = score
+
+    cur_agent = build_agent(agent_config, num_actions, num_obs)
+    cur_agent.policy_net.load_state_dict(best)
+
+    save_agent(name, cur_agent, agent_config, num_actions, num_obs)
+
+    print(f'saved agent with name "{name}" and score {best_score:.2f}')
